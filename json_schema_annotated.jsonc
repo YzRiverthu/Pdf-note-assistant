@@ -1,0 +1,207 @@
+{
+    "metadata": {                                          // 文献身份信息
+      "doi": "string",                                     // 文献唯一标识符
+      "title": "string",                                   // 论文标题
+      "authors": ["string"],                               // 作者列表
+      "publication_year": "integer",                       // 发表年份
+      "journal": "string",                                 // 期刊名称
+      "keywords": ["string"],                              // 关键词
+      "research_type": "enum[experimental, computational, theoretical, review]",  // 研究类型
+      "alloy_system": {                                    // 合金体系
+        "base_element": "string",                          // 基体元素
+        "alloying_elements": ["string"],                   // 合金化元素列表
+        "nominal_composition": {                           // 名义成分
+          "element": "string",                             // 元素名称
+          "weight_percent": "number",                      // 重量百分比 wt%
+          "atomic_percent": "number"                       // 原子百分比 at%
+        }
+      }
+    },
+    
+    "processing": {                                        // 制备工艺
+      "synthesis_methods": [                               // 合成方法
+        {
+          "method": "enum[casting, powder_metallurgy, additive_manufacturing, mechanical_alloying, ...]",  // 合成方法名称
+          "parameters": {                                  // 工艺参数
+            "temperature": {"value": "number", "unit": "°C"},  // 合成温度
+            "atmosphere": "string",                        // 气氛环境
+            "cooling_rate": "string",                      // 冷却速率
+            "others": "object"                              // 其他参数
+          }
+        }
+      ],
+      "thermomechanical_processing": {                     // 热机械处理
+        "hot_working": {                                   // 热加工
+          "method": "enum[rolling, forging, extrusion]",   // 热加工方法
+          "temperature_range": "string",                   // 加工温度范围
+          "reduction_ratio": "number"                      // 变形量/压下比
+        },
+        "heat_treatment": [                                // 热处理
+          {
+            "type": "enum[solutionizing, aging, annealing, quenching, tempering]",  // 热处理类型
+            "temperature": "number",                       // 保温温度
+            "duration": "number",                          // 保温时间
+            "cooling_medium": "string"                     // 冷却介质（水淬/空冷/炉冷等）
+          }
+        ]
+      },
+      "post_processing": ["surface_treatment", "machining"],  // 后处理工序
+      "others": {                                          // 其他工艺信息
+        "note": "string"                                   // 补充说明
+      }
+    },
+  
+    "microstructure": {                                    // 微观组织
+      "phases_present": [                                  // 存在的相
+        {
+          "phase_name": "string",                          // 相名称（如γ、γ'、δ）
+          "crystal_structure": "string",                   // 晶体结构（FCC/BCC/HCP等）
+          "volume_fraction": "number",                     // 体积分数
+          "morphology": "string"                           // 形貌（等轴/柱状/针状等）
+        }
+      ],
+      "grain_structure": {                                 // 晶粒结构
+        "average_grain_size": {"value": "number", "unit": "μm"},  // 平均晶粒尺寸
+        "grain_size_distribution": "string",               // 晶粒尺寸分布特征
+        "texture": "string"                                // 织构信息
+      },
+      "defects": {                                         // 缺陷
+        "porosity": "number",                              // 孔隙率
+        "inclusions": ["string"],                          // 夹杂物类型
+        "dislocation_density": "string"                    // 位错密度
+      },
+      "precipitates": [                                    // 析出相
+        {
+          "type": "string",                                // 析出相类型（如γ''、η、κ-碳化物）
+          "size": {"value": "number", "unit": "nm"},       // 析出相尺寸
+          "distribution": "string",                        // 分布特征
+          "coherency": "boolean"                           // 是否与基体共格
+        }
+      ]
+    },
+  
+    "properties": {                                        // 性能数据
+      "mechanical": {                                      // 力学性能
+        "tensile_properties": {                            // 拉伸性能
+          "yield_strength": {"value": "number", "unit": "MPa"},              // 屈服强度
+          "ultimate_tensile_strength": {"value": "number", "unit": "MPa"},   // 抗拉强度
+          "elongation": {"value": "number", "unit": "%"},                    // 延伸率
+          "youngs_modulus": {"value": "number", "unit": "GPa"}               // 杨氏模量
+        },
+        "hardness": {                                      // 硬度
+          "value": "number",                               // 硬度值
+          "scale": "enum[Vickers, Rockwell, Brinell]",     // 硬度标尺
+          "unit": "string"                                 // 单位（如HV、HRC）
+        },
+        "fracture_toughness": {"value": "number", "unit": "MPa·m^1/2"},     // 断裂韧性 K_IC
+        "fatigue_properties": {                            // 疲劳性能
+          "fatigue_limit": "number",                       // 疲劳极限
+          "cycles_to_failure": "number"                    // 失效循环次数
+        },
+        "creep_properties": {                              // 蠕变性能
+          "steady_state_creep_rate": "number",             // 稳态蠕变速率
+          "rupture_life": "number"                         // 持久寿命
+        }
+      },
+      "physical": {                                        // 物理性能
+        "density": {"value": "number", "unit": "g/cm³"},   // 密度
+        "thermal_properties": {                            // 热学性能
+          "thermal_conductivity": "number",                // 热导率
+          "thermal_expansion_coefficient": "number",       // 热膨胀系数
+          "specific_heat": "number"                        // 比热容
+        },
+        "electrical_properties": {                         // 电学性能
+          "electrical_conductivity": "number",             // 电导率
+          "resistivity": "number"                          // 电阻率
+        },
+        "magnetic_properties": {                           // 磁学性能
+          "magnetic_susceptibility": "number",             // 磁化率
+          "curie_temperature": "number"                    // 居里温度
+        }
+      },
+      "chemical": {                                        // 化学性能
+        "corrosion_resistance": {                          // 耐腐蚀性
+          "test_medium": "string",                         // 测试介质（如3.5%NaCl）
+          "corrosion_rate": "number",                      // 腐蚀速率
+          "passivation_behavior": "boolean"                // 是否发生钝化
+        },
+        "oxidation_resistance": {                          // 抗氧化性
+          "oxidation_rate_constant": "number",             // 氧化速率常数
+          "protective_scale": "string"                     // 保护性氧化膜类型
+        }
+      },
+      "radiation_properties": {                            // 辐照性能
+        "void_swelling": "number",                         // 辐照肿胀率
+        "irradiation_hardening": "number",                 // 辐照硬化增量
+        "helium_embrittlement": "boolean"                  // 是否发生氦脆
+      }
+    },
+  
+    "performance": {                                       // 服役表现
+      "service_conditions": {                              // 服役条件
+        "operating_temperature": {"min": "number", "max": "number", "unit": "°C"},  // 工作温度范围
+        "stress_state": "string",                          // 应力状态
+        "environment": "string"                            // 服役环境介质
+      },
+      "lifetime_prediction": {                             // 寿命预测
+        "model_used": "string",                            // 预测模型名称
+        "predicted_lifetime": "number",                    // 预测寿命值
+        "confidence_interval": "string"                    // 置信区间
+      },
+      "comparative_performance": {                         // 对比性能
+        "benchmark_alloy": "string",                       // 对标合金
+        "improvement_percentage": "number"                 // 性能提升百分比
+      }
+    },
+  
+    "characterization_methods": [                          // 表征方法
+      {
+        "technique": "enum[SEM, TEM, XRD, EBSD, APT, DSC, TGA, ...]",  // 表征技术名称
+        "purpose": "string",                               // 表征目的
+        "key_findings": "string"                           // 关键发现
+      }
+    ],
+  
+    "computational_details": {                             // 计算模拟细节
+      "simulation_method": "enum[DFT, MD, MC, FEM, CALPHAD, ML]",  // 模拟方法
+      "software_used": "string",                           // 使用的软件
+      "potential_model": "string",                         // 势函数/力场模型
+      "validation_against_experiment": "boolean"           // 是否经实验验证
+    },
+  
+    "relationships": {                                     // 科学关系（知识图谱核心）
+      "structure_property": [                              // 组织-性能关系
+        {
+          "descriptor": "string",                          // 组织特征描述符
+          "target_property": "string",                     // 影响的目标性能
+          "correlation_type": "enum[linear, non_linear, threshold]",  // 关联类型
+          "mechanism": "string"                            // 作用机理
+        }
+      ],
+      "process_structure": [                               // 工艺-组织关系
+        {
+          "processing_parameter": "string",                // 工艺参数
+          "resulting_feature": "string",                   // 导致的组织特征
+          "mechanism": "string"                            // 作用机理
+        }
+      ],
+      "composition_structure": [                           // 成分-组织关系
+        {
+          "alloying_element": "string",                    // 合金元素
+          "effect_on_phase": "string",                     // 对相的影响
+          "optimal_range": "string"                        // 最优含量范围
+        }
+      ]
+    },
+  
+    "application_context": {                               // 应用背景
+      "target_application": "enum[aerospace, automotive, nuclear, biomedical, energy, ...]",  // 目标应用领域
+      "component_type": "string",                          // 具体部件类型
+      "replacement_for": "string",                         // 拟替代的现有材料
+      "technology_readiness_level": "integer"              // 技术成熟度等级 TRL 1-9
+    },
+
+    "others": {                                            // 其他补充信息
+      "note": "string"                                     // 备注
+    }
+  }

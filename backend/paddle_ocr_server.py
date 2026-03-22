@@ -1,0 +1,153 @@
+from __future__ import annotations
+
+import base64
+import io
+import os
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from PIL import Image
+
+
+BASE_DIR = Path(__file__).resolve().parent
+RUNTIME_DIR = BASE_DIR / ".runtime"
+RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+
+os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(RUNTIME_DIR / "paddlex"))
+os.environ.setdefault("MPLCONFIGDIR", str(RUNTIME_DIR / "matplotlib"))
+os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
+
+app = FastAPI(title="Local PaddleOCR Service", version="0.0.1")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+ocr_engine = None
+ocr_import_error: str | None = None
+
+
+class OCRRequest(BaseModel):
+    image_base64: str
+    lang: str = "ch"
+
+
+def get_ocr_engine(lang: str = "ch") -> Any:
+    global ocr_engine, ocr_import_error
+    if ocr_engine is not None:
+        return ocr_engine
+    try:
+        from paddleocr import PaddleOCR  # type: ignore
+    except Exception as exc:  # pragma: no cover
+        ocr_import_error = str(exc)
+        raise RuntimeError(
+            "PaddleOCR 未安装或导入失败。请先安装 paddleocr 和 paddlepaddle。"
+        ) from exc
+    ocr_engine = PaddleOCR(use_angle_cls=True, lang=lang)
+    return ocr_engine
+
+
+def collect_ocr_items(node: Any, output: list[dict[str, Any]]) -> None:
+    if node is None:
+        return
+
+    if isinstance(node, dict):
+        if isinstance(node.get("rec_texts"), list):
+            texts = node.get("rec_texts") or []
+            scores = node.get("rec_scores") or []
+            polys = node.get("dt_polys") or node.get("rec_polys") or node.get("dt_boxes") or []
+            for index, text in enumerate(texts):
+                if not text:
+                    continue
+                score = scores[index] if index < len(scores) else None
+                box = polys[index] if index < len(polys) else None
+                output.append(
+                    {
+                        "text": str(text),
+                        "score": float(score) if score is not None else None,
+                        "box": box,
+                    }
+                )
+            return
+        text = node.get("text") or node.get("rec_text") or node.get("transcription")
+        score = node.get("score") or node.get("rec_score") or node.get("confidence")
+        box = node.get("box") or node.get("points") or node.get("bbox") or node.get("poly")
+        if text:
+            output.append(
+                {
+                    "text": str(text),
+                    "score": float(score) if score is not None else None,
+                    "box": box,
+                }
+            )
+            return
+        for value in node.values():
+            collect_ocr_items(value, output)
+        return
+
+    if isinstance(node, (list, tuple)):
+        if (
+            len(node) == 2
+            and isinstance(node[1], (list, tuple))
+            and len(node[1]) >= 1
+            and isinstance(node[1][0], str)
+        ):
+            text = node[1][0]
+            score = node[1][1] if len(node[1]) > 1 else None
+            output.append(
+                {
+                    "text": text,
+                    "score": float(score) if score is not None else None,
+                    "box": node[0],
+                }
+            )
+            return
+        for item in node:
+            collect_ocr_items(item, output)
+        return
+
+
+def to_json_safe(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, (list, tuple)):
+        return [to_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: to_json_safe(val) for key, val in value.items()}
+    return value
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "cache_home": os.environ.get("PADDLE_PDX_CACHE_HOME"),
+        "matplotlib_home": os.environ.get("MPLCONFIGDIR"),
+        "import_error": ocr_import_error,
+    }
+
+
+@app.post("/ocr")
+def ocr_endpoint(payload: OCRRequest) -> dict[str, Any]:
+    image_data = base64.b64decode(payload.image_base64)
+    image = Image.open(io.BytesIO(image_data)).convert("RGB")
+    image_array = np.array(image)
+    engine = get_ocr_engine(payload.lang)
+    result = engine.ocr(image_array)
+
+    raw_items: list[dict[str, Any]] = []
+    collect_ocr_items(result, raw_items)
+    lines = [item["text"] for item in raw_items if item.get("text")]
+
+    return {
+        "text": "\n".join(lines).strip(),
+        "items": to_json_safe(raw_items),
+        "count": len(raw_items),
+    }

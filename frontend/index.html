@@ -1,0 +1,2956 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 标注工具 MVP</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: rgba(250, 247, 240, 0.92);
+      --panel-strong: rgba(255, 252, 246, 0.96);
+      --line: #d7d0c3;
+      --line-strong: #c9bfad;
+      --text: #1d1b18;
+      --muted: #6d665b;
+      --accent: #0f6a5b;
+      --accent-soft: #dceee8;
+      --accent-strong: #0b5548;
+      --info-soft: #e3edf8;
+      --danger: #b9422f;
+      --danger-soft: #f7e2dc;
+      --shadow: 0 14px 34px rgba(34, 27, 18, 0.08);
+      --shadow-soft: 0 8px 22px rgba(34, 27, 18, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(15, 106, 91, 0.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(184, 146, 78, 0.10), transparent 24%),
+        linear-gradient(180deg, #f8f5ef 0%, var(--bg) 100%);
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    #toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(248, 244, 236, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+
+    .toolbar-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .toolbar-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 220px;
+      padding-right: 10px;
+    }
+
+    .toolbar-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .toolbar-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .toolbar-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .status-chip {
+      min-width: 0;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.74);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      overflow: hidden;
+    }
+
+    .status-chip strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .toolbar-ribbon {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .ribbon-group {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .ribbon-group-title {
+      width: 54px;
+      flex: 0 0 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(239, 231, 216, 0.74);
+      border-radius: 8px;
+      padding: 6px 4px;
+      line-height: 1.25;
+    }
+
+    .toolbar-uploads {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .upload-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .upload-group label {
+      margin: 0;
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .upload-group input[type="file"] {
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 8px;
+      background: #fffdf8;
+    }
+
+    .upload-group .hint {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .toolbar-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    #main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+    }
+
+    #viewer-shell {
+      min-width: 0;
+      min-height: 0;
+      padding: 12px;
+    }
+
+    .view-panel {
+      height: 100%;
+    }
+
+    #pdf-container {
+      position: relative;
+      height: 100%;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #d9d4c8;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    #json-preview-panel,
+    #schema-help-panel {
+      display: none;
+      height: 100%;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-strong);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    #json-preview-panel.active,
+    #schema-help-panel.active,
+    #pdf-view-panel.active {
+      display: block;
+    }
+
+    #pdf-view-panel {
+      display: none;
+    }
+
+    .json-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .json-preview-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #json-preview,
+    #schema-help-preview {
+      margin: 0;
+      padding: 20px;
+      border-radius: 16px;
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #canvas-stack {
+      position: relative;
+      width: fit-content;
+      margin: 0 auto;
+    }
+
+    #pdf-render,
+    #annotation-layer {
+      display: block;
+      border-radius: 6px;
+    }
+
+    #annotation-layer {
+      position: absolute;
+      inset: 0;
+      cursor: crosshair;
+    }
+
+    #side-panel {
+      min-height: 0;
+      overflow: auto;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+      padding: 14px 14px 20px;
+    }
+
+    h2,
+    h3 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      letter-spacing: 0.01em;
+    }
+
+    .panel-block {
+      padding: 14px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .array-level-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .array-level-chip {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .array-level-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .array-level-chip:hover:not(:disabled) {
+      transform: none;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .label-row label {
+      margin-bottom: 0;
+    }
+
+    .mini-button {
+      padding: 5px 10px;
+      min-width: 34px;
+      border-radius: 10px;
+      background: rgba(15, 106, 91, 0.10);
+      color: var(--accent-strong);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .mini-button.textual {
+      min-width: auto;
+      padding: 7px 10px;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #cbc1b0;
+      background: #fffdf8;
+      color: var(--text);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: rgba(15, 106, 91, 0.45);
+      box-shadow: 0 0 0 4px rgba(15, 106, 91, 0.10);
+      background: #ffffff;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #efe7d8;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.15s ease, box-shadow 0.18s ease, background 0.18s ease;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(34, 27, 18, 0.08);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.highlight {
+      background: var(--info-soft);
+      color: #244a73;
+    }
+
+    button.danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .action-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .action-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .action-row.secondary {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .action-row.primary {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    }
+
+    .action-row button {
+      width: 100%;
+      min-height: 44px;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .anno-item {
+      margin-bottom: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .anno-item.active {
+      outline: 2px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .anno-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .anno-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .anno-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .anno-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      word-break: break-all;
+    }
+
+    #validation-output {
+      white-space: pre-wrap;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+      line-height: 1.55;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(109, 102, 91, 0.28);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    @media (max-width: 1080px) {
+      .toolbar-top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar-brand {
+        min-width: 0;
+      }
+
+      .toolbar-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toolbar-ribbon {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-uploads {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .toolbar-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      #main {
+        grid-template-columns: 1fr;
+      }
+
+      #side-panel {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .toolbar-meta,
+      .toolbar-uploads,
+      .toolbar-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .ribbon-group {
+        flex-direction: column;
+      }
+
+      .ribbon-group-title {
+        width: 100%;
+        flex-basis: auto;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .action-row.secondary,
+      .action-row.primary,
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <div class="toolbar-top">
+      <div class="toolbar-brand">
+        <div class="toolbar-title">PDF 标注工作台</div>
+        <div class="toolbar-subtitle">以标注为中心的结构化抽取界面</div>
+      </div>
+      <div class="toolbar-meta">
+        <div id="page-info" class="status-chip"><strong>页码</strong>第 0 页 / 共 0 页</div>
+        <div id="document-info" class="status-chip"><strong>当前文档</strong>未加载 PDF</div>
+        <div id="schema-info" class="status-chip"><strong>标注 Schema</strong>内置默认字段树</div>
+        <div id="schema-help-info" class="status-chip"><strong>辅助说明</strong>未加载</div>
+      </div>
+    </div>
+
+    <div class="toolbar-ribbon">
+      <div class="ribbon-group">
+        <div class="ribbon-group-title">文件</div>
+        <div class="toolbar-uploads">
+          <div class="upload-group">
+            <label for="file-input">PDF 原文</label>
+            <input type="file" id="file-input" accept="application/pdf">
+            <div class="hint">上传待标注 PDF</div>
+          </div>
+          <div class="upload-group">
+            <label for="schema-file-input">标注 Schema</label>
+            <input type="file" id="schema-file-input" accept=".json,application/json">
+            <div class="hint">上传 `json_schema.json`</div>
+          </div>
+          <div class="upload-group">
+            <label for="schema-help-file-input">辅助说明</label>
+            <input type="file" id="schema-help-file-input" accept=".jsonc,.json,text/plain">
+            <div class="hint">上传 `json_schema.jsonc`</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ribbon-group">
+        <div class="ribbon-group-title">页面</div>
+        <div class="toolbar-actions">
+          <button id="prev-page">上一页</button>
+          <button id="next-page">下一页</button>
+          <button id="zoom-out">缩小</button>
+          <button id="zoom-in">放大</button>
+        </div>
+      </div>
+
+      <div class="ribbon-group">
+        <div class="ribbon-group-title">标注</div>
+        <div class="toolbar-actions">
+          <button id="reset-schema">恢复默认</button>
+          <button id="toggle-help-view">辅助说明</button>
+          <button id="download-screenshot">截图</button>
+          <button id="toggle-view" class="highlight">查看 JSON</button>
+          <button id="validate-json">校验</button>
+          <button id="export-json" class="primary">导出 JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="viewer-shell">
+      <div id="pdf-view-panel" class="view-panel active">
+        <div id="pdf-container">
+          <div id="canvas-stack">
+            <canvas id="pdf-render"></canvas>
+            <canvas id="annotation-layer"></canvas>
+          </div>
+        </div>
+      </div>
+      <div id="json-preview-panel" class="view-panel">
+        <div class="json-preview-head">
+          <h2>当前 JSON 结果</h2>
+          <div id="json-preview-meta" class="json-preview-meta">暂无标注</div>
+        </div>
+        <pre id="json-preview">{}</pre>
+      </div>
+      <div id="schema-help-panel" class="view-panel">
+        <div class="json-preview-head">
+          <h2>辅助注释 Schema</h2>
+          <div id="schema-help-meta" class="json-preview-meta">未加载辅助注释文件</div>
+        </div>
+        <pre id="schema-help-preview">请上传 `json_schema.jsonc` 后在这里查看带注释的辅助说明。</pre>
+      </div>
+    </div>
+
+    <aside id="side-panel">
+      <div class="panel-block">
+        <h2>当前标注</h2>
+        <div id="draft-status" class="status">先在左侧 PDF 上框选一个区域。</div>
+      </div>
+
+      <div class="panel-block">
+        <h3>内容分类</h3>
+        <div id="label-levels"></div>
+        <div class="form-group" id="array-index-group">
+          <label>数组索引</label>
+          <div id="array-index-fields"></div>
+          <div class="hint">当前字段位于数组项时，可选择已有数组层级，或新增下一层级继续标注。</div>
+        </div>
+        <div class="form-group">
+          <label for="selected-path-output">最终字段路径</label>
+          <input id="selected-path-output" disabled placeholder="按上方标签逐级选择后自动生成">
+        </div>
+      </div>
+
+      <div class="panel-block">
+        <h3>提取值</h3>
+        <div class="form-group">
+          <label for="ocr-endpoint-input">OCR 服务地址</label>
+          <input id="ocr-endpoint-input" value="http://127.0.0.1:8765/ocr" placeholder="例如 http://127.0.0.1:8765/ocr">
+          <div class="hint">本地 OCR 服务启动后，框选区域可发送到该地址进行识别。</div>
+        </div>
+        <div class="form-group">
+          <label for="raw-text-input">原文摘录</label>
+          <textarea id="raw-text-input" placeholder="框选后若 PDF 可提取文本，这里会自动填充；也可手工修正。"></textarea>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="confidence-input">置信度</label>
+            <input id="confidence-input" type="number" min="0" max="1" step="0.05" value="0.9">
+          </div>
+          <div class="form-group">
+            <label>字段值类型</label>
+            <input value="string" disabled>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="normalized-value-input">字段值</label>
+            <input id="normalized-value-input" placeholder="统一按 string 保存，例如 512">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="note-input">备注</label>
+          <textarea id="note-input" placeholder="记录解释、疑问或人工修订说明。"></textarea>
+        </div>
+        <div class="action-stack">
+          <div class="action-row secondary">
+            <button id="refresh-text">重新提取文本</button>
+            <button id="clear-draft" class="danger">清空当前框选</button>
+          </div>
+          <div class="action-row primary">
+            <button id="save-annotation" class="primary">保存标注</button>
+            <button id="cancel-edit">取消编辑</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-block">
+        <h3>校验结果</h3>
+        <div id="validation-output">尚未执行校验。</div>
+      </div>
+
+      <div class="panel-block">
+        <h3>标注列表</h3>
+        <div id="annotations-list"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    pdfjsLib.disableWorker = true;
+
+    const defaultSchemaPaths = [
+      "metadata.doi",
+      "metadata.title",
+      "metadata.authors[0]",
+      "metadata.publication_year",
+      "metadata.journal",
+      "metadata.keywords[0]",
+      "metadata.research_type",
+      "metadata.alloy_system.base_element",
+      "metadata.alloy_system.alloying_elements[0]",
+      "metadata.alloy_system.nominal_composition.element",
+      "metadata.alloy_system.nominal_composition.weight_percent",
+      "metadata.alloy_system.nominal_composition.atomic_percent",
+      "processing.synthesis_methods[].method",
+      "processing.synthesis_methods[].parameters.temperature.value",
+      "processing.synthesis_methods[].parameters.temperature.unit",
+      "processing.synthesis_methods[].parameters.atmosphere",
+      "processing.synthesis_methods[].parameters.cooling_rate",
+      "processing.thermomechanical_processing.hot_working.method",
+      "processing.thermomechanical_processing.hot_working.temperature_range",
+      "processing.thermomechanical_processing.hot_working.reduction_ratio",
+      "processing.thermomechanical_processing.heat_treatment[].type",
+      "processing.thermomechanical_processing.heat_treatment[].temperature",
+      "processing.thermomechanical_processing.heat_treatment[].duration",
+      "processing.thermomechanical_processing.heat_treatment[].cooling_medium",
+      "processing.post_processing[0]",
+      "processing.others.note",
+      "microstructure.phases_present[].phase_name",
+      "microstructure.phases_present[].crystal_structure",
+      "microstructure.phases_present[].volume_fraction",
+      "microstructure.phases_present[].morphology",
+      "microstructure.grain_structure.average_grain_size.value",
+      "microstructure.grain_structure.average_grain_size.unit",
+      "microstructure.grain_structure.grain_size_distribution",
+      "microstructure.grain_structure.texture",
+      "microstructure.defects.porosity",
+      "microstructure.defects.inclusions[0]",
+      "microstructure.defects.dislocation_density",
+      "microstructure.precipitates[].type",
+      "microstructure.precipitates[].size.value",
+      "microstructure.precipitates[].size.unit",
+      "microstructure.precipitates[].distribution",
+      "microstructure.precipitates[].coherency",
+      "properties.mechanical.tensile_properties.yield_strength.value",
+      "properties.mechanical.tensile_properties.yield_strength.unit",
+      "properties.mechanical.tensile_properties.ultimate_tensile_strength.value",
+      "properties.mechanical.tensile_properties.ultimate_tensile_strength.unit",
+      "properties.mechanical.tensile_properties.elongation.value",
+      "properties.mechanical.tensile_properties.elongation.unit",
+      "properties.mechanical.tensile_properties.youngs_modulus.value",
+      "properties.mechanical.tensile_properties.youngs_modulus.unit",
+      "properties.mechanical.hardness.value",
+      "properties.mechanical.hardness.scale",
+      "properties.mechanical.hardness.unit",
+      "properties.mechanical.fracture_toughness.value",
+      "properties.mechanical.fracture_toughness.unit",
+      "properties.mechanical.fatigue_properties.fatigue_limit",
+      "properties.mechanical.fatigue_properties.cycles_to_failure",
+      "properties.mechanical.creep_properties.steady_state_creep_rate",
+      "properties.mechanical.creep_properties.rupture_life",
+      "properties.physical.density.value",
+      "properties.physical.density.unit",
+      "properties.physical.thermal_properties.thermal_conductivity",
+      "properties.physical.thermal_properties.thermal_expansion_coefficient",
+      "properties.physical.thermal_properties.specific_heat",
+      "properties.physical.electrical_properties.electrical_conductivity",
+      "properties.physical.electrical_properties.resistivity",
+      "properties.physical.magnetic_properties.magnetic_susceptibility",
+      "properties.physical.magnetic_properties.curie_temperature",
+      "properties.chemical.corrosion_resistance.test_medium",
+      "properties.chemical.corrosion_resistance.corrosion_rate",
+      "properties.chemical.corrosion_resistance.passivation_behavior",
+      "properties.chemical.oxidation_resistance.oxidation_rate_constant",
+      "properties.chemical.oxidation_resistance.protective_scale",
+      "properties.radiation_properties.void_swelling",
+      "properties.radiation_properties.irradiation_hardening",
+      "properties.radiation_properties.helium_embrittlement",
+      "performance.service_conditions.operating_temperature.min",
+      "performance.service_conditions.operating_temperature.max",
+      "performance.service_conditions.operating_temperature.unit",
+      "performance.service_conditions.stress_state",
+      "performance.service_conditions.environment",
+      "performance.lifetime_prediction.model_used",
+      "performance.lifetime_prediction.predicted_lifetime",
+      "performance.lifetime_prediction.confidence_interval",
+      "performance.comparative_performance.benchmark_alloy",
+      "performance.comparative_performance.improvement_percentage",
+      "characterization_methods[].technique",
+      "characterization_methods[].purpose",
+      "characterization_methods[].key_findings",
+      "computational_details.simulation_method",
+      "computational_details.software_used",
+      "computational_details.potential_model",
+      "computational_details.validation_against_experiment",
+      "relationships.structure_property[].descriptor",
+      "relationships.structure_property[].target_property",
+      "relationships.structure_property[].correlation_type",
+      "relationships.structure_property[].mechanism",
+      "relationships.process_structure[].processing_parameter",
+      "relationships.process_structure[].resulting_feature",
+      "relationships.process_structure[].mechanism",
+      "relationships.composition_structure[].alloying_element",
+      "relationships.composition_structure[].effect_on_phase",
+      "relationships.composition_structure[].optimal_range",
+      "application_context.target_application",
+      "application_context.component_type",
+      "application_context.replacement_for",
+      "application_context.technology_readiness_level",
+      "others.note"
+    ];
+
+    function normalizeSchemaTemplatePathRaw(path) {
+      return String(path || "")
+        .split(".")
+        .map((segment) => segment.replace(/\[\d+\]/g, "[]"))
+        .join(".");
+    }
+
+    const defaultSchemaMeta = {
+      name: "内置默认字段树",
+      source: "built-in"
+    };
+
+    const state = {
+      pdfDoc: null,
+      pdfName: "",
+      currentPage: 1,
+      totalPages: 0,
+      scale: 1.25,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      viewportWidth: 0,
+      viewportHeight: 0,
+      viewMode: "pdf",
+      screenshotMode: false,
+      annotations: [],
+      currentDraft: null,
+      editingId: null,
+      textCache: new Map(),
+      schemaTree: {},
+      schemaTemplatePaths: Array.from(new Set(defaultSchemaPaths.map(normalizeSchemaTemplatePathRaw))),
+      schemaDefinition: null,
+      schemaMeta: { ...defaultSchemaMeta },
+      schemaHelpText: "",
+      schemaHelpMeta: {
+        name: "",
+        source: "none"
+      },
+      selectedSegments: [],
+      arrayIndices: {},
+      arrayLevelRegistry: {}
+    };
+
+    const els = {
+      fileInput: document.getElementById("file-input"),
+      schemaFileInput: document.getElementById("schema-file-input"),
+      schemaHelpFileInput: document.getElementById("schema-help-file-input"),
+      resetSchemaButton: document.getElementById("reset-schema"),
+      toggleHelpViewButton: document.getElementById("toggle-help-view"),
+      pageInfo: document.getElementById("page-info"),
+      schemaInfo: document.getElementById("schema-info"),
+      schemaHelpInfo: document.getElementById("schema-help-info"),
+      documentInfo: document.getElementById("document-info"),
+      toggleViewButton: document.getElementById("toggle-view"),
+      pdfViewPanel: document.getElementById("pdf-view-panel"),
+      jsonPreviewPanel: document.getElementById("json-preview-panel"),
+      schemaHelpPanel: document.getElementById("schema-help-panel"),
+      jsonPreview: document.getElementById("json-preview"),
+      jsonPreviewMeta: document.getElementById("json-preview-meta"),
+      schemaHelpPreview: document.getElementById("schema-help-preview"),
+      schemaHelpMeta: document.getElementById("schema-help-meta"),
+      pdfCanvas: document.getElementById("pdf-render"),
+      annotCanvas: document.getElementById("annotation-layer"),
+      draftStatus: document.getElementById("draft-status"),
+      labelLevels: document.getElementById("label-levels"),
+      arrayIndexGroup: document.getElementById("array-index-group"),
+      arrayIndexFields: document.getElementById("array-index-fields"),
+      selectedPathOutput: document.getElementById("selected-path-output"),
+      ocrEndpointInput: document.getElementById("ocr-endpoint-input"),
+      rawTextInput: document.getElementById("raw-text-input"),
+      normalizedValueInput: document.getElementById("normalized-value-input"),
+      noteInput: document.getElementById("note-input"),
+      confidenceInput: document.getElementById("confidence-input"),
+      annotationsList: document.getElementById("annotations-list"),
+      validationOutput: document.getElementById("validation-output"),
+      saveButton: document.getElementById("save-annotation"),
+      cancelEditButton: document.getElementById("cancel-edit")
+    };
+
+    function renderStatusChip(element, title, text) {
+      element.innerHTML = `<strong>${title}</strong>${text}`;
+    }
+
+    function updateSchemaInfo() {
+      renderStatusChip(
+        els.schemaInfo,
+        "标注 Schema",
+        `${state.schemaMeta.name}（${state.schemaTemplatePaths.length} 个末级字段）`
+      );
+    }
+
+    function updateSchemaHelpInfo() {
+      const text = state.schemaHelpMeta.source === "none"
+        ? "未加载"
+        : state.schemaHelpMeta.name;
+      renderStatusChip(els.schemaHelpInfo, "辅助说明", text);
+      els.schemaHelpMeta.textContent = text;
+      els.toggleHelpViewButton.disabled = state.schemaHelpMeta.source === "none";
+      els.schemaHelpPreview.textContent = state.schemaHelpText || "请上传 `json_schema.jsonc` 后在这里查看带注释的辅助说明。";
+    }
+
+    function stripJsonComments(text) {
+      let result = "";
+      let inString = false;
+      let escaped = false;
+      let inLineComment = false;
+      let inBlockComment = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const current = text[i];
+        const next = text[i + 1];
+
+        if (inLineComment) {
+          if (current === "\n") {
+            inLineComment = false;
+            result += current;
+          }
+          continue;
+        }
+
+        if (inBlockComment) {
+          if (current === "*" && next === "/") {
+            inBlockComment = false;
+            i += 1;
+          }
+          continue;
+        }
+
+        if (inString) {
+          result += current;
+          if (escaped) {
+            escaped = false;
+          } else if (current === "\\") {
+            escaped = true;
+          } else if (current === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+
+        if (current === "/" && next === "/") {
+          inLineComment = true;
+          i += 1;
+          continue;
+        }
+
+        if (current === "/" && next === "*") {
+          inBlockComment = true;
+          i += 1;
+          continue;
+        }
+
+        result += current;
+        if (current === "\"") {
+          inString = true;
+        }
+      }
+
+      return result;
+    }
+
+    function stripTrailingCommas(text) {
+      let result = "";
+      let inString = false;
+      let escaped = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const current = text[i];
+
+        if (inString) {
+          result += current;
+          if (escaped) {
+            escaped = false;
+          } else if (current === "\\") {
+            escaped = true;
+          } else if (current === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+
+        if (current === "\"") {
+          inString = true;
+          result += current;
+          continue;
+        }
+
+        if (current === ",") {
+          let lookahead = i + 1;
+          while (lookahead < text.length && /\s/.test(text[lookahead])) {
+            lookahead += 1;
+          }
+          if (text[lookahead] === "}" || text[lookahead] === "]") {
+            continue;
+          }
+        }
+
+        result += current;
+      }
+
+      return result;
+    }
+
+    function parseJsonLikeSchema(text) {
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        const sanitized = stripTrailingCommas(stripJsonComments(text));
+        return JSON.parse(sanitized);
+      }
+    }
+
+    function isStandardJsonSchemaNode(node) {
+      if (!node || typeof node !== "object" || Array.isArray(node)) {
+        return false;
+      }
+
+      const keys = Object.keys(node);
+      const schemaKeywordSet = new Set([
+        "$schema",
+        "$id",
+        "$ref",
+        "type",
+        "enum",
+        "const",
+        "oneOf",
+        "anyOf",
+        "allOf",
+        "items",
+        "required",
+        "additionalProperties",
+        "definitions",
+        "$defs",
+        "title",
+        "description",
+        "default",
+        "examples",
+        "nullable",
+        "deprecated",
+        "readOnly",
+        "writeOnly",
+        "format",
+        "pattern",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "minItems",
+        "maxItems",
+        "minLength",
+        "maxLength",
+        "uniqueItems"
+      ]);
+
+      const hasSchemaKeyword = keys.some((key) => schemaKeywordSet.has(key));
+      const hasStructureKeyword = [
+        "$schema",
+        "$id",
+        "$ref",
+        "properties",
+        "items",
+        "enum",
+        "const",
+        "oneOf",
+        "anyOf",
+        "allOf",
+        "required",
+        "additionalProperties",
+        "definitions",
+        "$defs"
+      ].some((key) => Object.prototype.hasOwnProperty.call(node, key));
+
+      if (hasStructureKeyword && keys.every((key) => schemaKeywordSet.has(key))) {
+        return true;
+      }
+
+      return hasSchemaKeyword
+        && keys.every((key) => schemaKeywordSet.has(key));
+    }
+
+    function pushUniquePath(paths, path) {
+      if (path && !paths.includes(path)) {
+        paths.push(path);
+      }
+    }
+
+    function traverseSchemaDefinition(node, currentPath, paths) {
+      if (node == null || typeof node !== "object") {
+        pushUniquePath(paths, currentPath);
+        return;
+      }
+
+      if (Array.isArray(node)) {
+        const arrayPath = currentPath ? `${currentPath}[]` : "";
+        if (!node.length) {
+          pushUniquePath(paths, arrayPath || currentPath);
+          return;
+        }
+        const nonEmptyItems = node.filter((item) => item !== null && item !== undefined);
+        if (!nonEmptyItems.length) {
+          pushUniquePath(paths, arrayPath || currentPath);
+          return;
+        }
+        if (nonEmptyItems.some((item) => typeof item === "object")) {
+          nonEmptyItems.forEach((item) => {
+            if (typeof item === "object") {
+              traverseSchemaDefinition(item, arrayPath, paths);
+            }
+          });
+          return;
+        }
+        pushUniquePath(paths, arrayPath);
+        return;
+      }
+
+      if (isStandardJsonSchemaNode(node)) {
+        const branchKeys = ["allOf", "anyOf", "oneOf"];
+        branchKeys.forEach((branchKey) => {
+          if (Array.isArray(node[branchKey])) {
+            node[branchKey].forEach((branchNode) => {
+              traverseSchemaDefinition(branchNode, currentPath, paths);
+            });
+          }
+        });
+
+        if (node.properties && typeof node.properties === "object") {
+          Object.entries(node.properties).forEach(([key, value]) => {
+            const nextPath = currentPath ? `${currentPath}.${key}` : key;
+            traverseSchemaDefinition(value, nextPath, paths);
+          });
+          return;
+        }
+
+        if (node.items !== undefined || node.type === "array") {
+          const arrayPath = currentPath ? `${currentPath}[]` : "";
+          if (node.items !== undefined) {
+            traverseSchemaDefinition(node.items, arrayPath, paths);
+            return;
+          }
+          pushUniquePath(paths, arrayPath);
+          return;
+        }
+
+        pushUniquePath(paths, currentPath);
+        return;
+      }
+
+      const keys = Object.keys(node);
+      if (!keys.length) {
+        pushUniquePath(paths, currentPath);
+        return;
+      }
+
+      keys.forEach((key) => {
+        const nextPath = currentPath ? `${currentPath}.${key}` : key;
+        traverseSchemaDefinition(node[key], nextPath, paths);
+      });
+    }
+
+    function extractPathsFromSchemaDefinition(definition) {
+      const paths = [];
+      traverseSchemaDefinition(definition, "", paths);
+      return paths;
+    }
+
+    function deepCloneJson(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function buildTemplateDefinitionFromPaths(paths) {
+      const root = {};
+
+      paths.forEach((path) => {
+        const segments = tokenizeSchemaPath(path);
+        let current = root;
+
+        segments.forEach((segment, index) => {
+          const isLast = index === segments.length - 1;
+          if (segment.isArray) {
+            if (!Array.isArray(current[segment.key])) {
+              current[segment.key] = [];
+            }
+            if (!current[segment.key][0]) {
+              current[segment.key][0] = isLast ? null : {};
+            }
+            if (!isLast && (current[segment.key][0] == null || typeof current[segment.key][0] !== "object")) {
+              current[segment.key][0] = {};
+            }
+            current = current[segment.key][0];
+            return;
+          }
+
+          if (isLast) {
+            if (!Object.prototype.hasOwnProperty.call(current, segment.key)) {
+              current[segment.key] = null;
+            }
+            return;
+          }
+
+          if (current[segment.key] == null || typeof current[segment.key] !== "object" || Array.isArray(current[segment.key])) {
+            current[segment.key] = {};
+          }
+          current = current[segment.key];
+        });
+      });
+
+      return root;
+    }
+
+    function mergeArrayItemTemplates(items) {
+      const merged = {};
+      items.forEach((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          return;
+        }
+        Object.entries(item).forEach(([key, value]) => {
+          if (!Object.prototype.hasOwnProperty.call(merged, key)) {
+            merged[key] = deepCloneJson(value);
+          } else if (
+            merged[key]
+            && typeof merged[key] === "object"
+            && !Array.isArray(merged[key])
+            && value
+            && typeof value === "object"
+            && !Array.isArray(value)
+          ) {
+            merged[key] = {
+              ...merged[key],
+              ...deepCloneJson(value)
+            };
+          }
+        });
+      });
+      return merged;
+    }
+
+    function getRegistryKeyForArray(descriptorKey, parentContext = {}) {
+      const entries = Object.entries(parentContext).sort(([leftKey], [rightKey]) => {
+        return leftKey.localeCompare(rightKey);
+      });
+      if (!entries.length) {
+        return descriptorKey;
+      }
+      return `${descriptorKey}::${entries.map(([key, value]) => `${key}=${value}`).join("|")}`;
+    }
+
+    function registerArrayLevel(descriptorKey, level, parentContext = {}) {
+      const normalizedLevel = String(level ?? "").trim();
+      if (normalizedLevel === "") {
+        return;
+      }
+      const registryKey = getRegistryKeyForArray(descriptorKey, parentContext);
+      if (!Array.isArray(state.arrayLevelRegistry[registryKey])) {
+        state.arrayLevelRegistry[registryKey] = [];
+      }
+      if (!state.arrayLevelRegistry[registryKey].includes(normalizedLevel)) {
+        state.arrayLevelRegistry[registryKey].push(normalizedLevel);
+        state.arrayLevelRegistry[registryKey].sort((left, right) => Number(left) - Number(right));
+      }
+    }
+
+    function registerArrayLevelsFromIndices(indices = {}) {
+      const descriptorKeys = Object.keys(indices);
+      descriptorKeys.forEach((descriptorKey, index) => {
+        const parentContext = descriptorKeys.slice(0, index).reduce((acc, key) => {
+          acc[key] = String(indices[key]);
+          return acc;
+        }, {});
+        registerArrayLevel(descriptorKey, indices[descriptorKey], parentContext);
+      });
+    }
+
+    function getParentContextForDescriptor(descriptors, descriptorIndex) {
+      return descriptors.slice(0, descriptorIndex).reduce((acc, descriptor) => {
+        const selectedValue = String(state.arrayIndices[descriptor.key] ?? "").trim();
+        if (selectedValue !== "") {
+          acc[descriptor.key] = selectedValue;
+        }
+        return acc;
+      }, {});
+    }
+
+    function getArrayTemplateDescriptors(templatePath) {
+      const segments = tokenizeSchemaPath(templatePath || "");
+      const accumulated = [];
+      const descriptors = [];
+
+      segments.forEach((segment) => {
+        accumulated.push(`${segment.key}${segment.isArray ? "[]" : ""}`);
+        if (segment.isArray) {
+          descriptors.push({
+            key: accumulated.join("."),
+            label: `${segment.key}[]`
+          });
+        }
+      });
+
+      return descriptors;
+    }
+
+    function getAnnotationArrayIndices(annotation) {
+      const result = {};
+      const stored = annotation?.schema_binding?.array_indices;
+
+      if (stored && typeof stored === "object") {
+        Object.entries(stored).forEach(([key, value]) => {
+          if (value != null && value !== "") {
+            result[key] = String(value);
+          }
+        });
+      }
+
+      if (
+        annotation?.schema_binding?.array_index != null
+        && annotation?.schema_binding?.schema_path_template
+      ) {
+        const descriptors = getArrayTemplateDescriptors(annotation.schema_binding.schema_path_template);
+        if (descriptors.length && result[descriptors[0].key] == null) {
+          result[descriptors[0].key] = String(annotation.schema_binding.array_index);
+        }
+      }
+
+      return result;
+    }
+
+    function getAvailableArrayLevels(descriptors, descriptorIndex) {
+      const descriptor = descriptors[descriptorIndex];
+      const values = new Set();
+      const parentDescriptors = descriptors.slice(0, descriptorIndex);
+      const parentContext = getParentContextForDescriptor(descriptors, descriptorIndex);
+      const registryKey = getRegistryKeyForArray(descriptor.key, parentContext);
+
+      state.annotations.forEach((annotation) => {
+        const annotationIndices = getAnnotationArrayIndices(annotation);
+        const matchesParents = parentDescriptors.every((parentDescriptor) => {
+          const selectedValue = String(parentContext[parentDescriptor.key] ?? "").trim();
+          if (!selectedValue) {
+            return false;
+          }
+          return annotationIndices[parentDescriptor.key] === selectedValue;
+        });
+
+        if (!parentDescriptors.length || matchesParents) {
+          const value = annotationIndices[descriptor.key];
+          if (value != null && value !== "") {
+            values.add(String(value));
+          }
+        }
+      });
+
+      const currentValue = String(state.arrayIndices[descriptor.key] ?? "").trim();
+      if (currentValue) {
+        values.add(currentValue);
+      }
+
+      const registeredLevels = state.arrayLevelRegistry[registryKey] || [];
+      registeredLevels.forEach((value) => values.add(String(value)));
+
+      if (!values.size) {
+        registerArrayLevel(descriptor.key, "0", parentContext);
+        values.add("0");
+      }
+
+      return Array.from(values).sort((left, right) => Number(left) - Number(right));
+    }
+
+    function clearDescendantArrayLevels(descriptors, descriptorIndex) {
+      descriptors.slice(descriptorIndex + 1).forEach((descriptor) => {
+        delete state.arrayIndices[descriptor.key];
+      });
+    }
+
+    function addArrayLevel(descriptors, descriptorIndex, templatePath) {
+      const descriptor = descriptors[descriptorIndex];
+      if (!descriptor) {
+        return;
+      }
+      const parentDescriptors = descriptors.slice(0, descriptorIndex);
+      const missingParent = parentDescriptors.find((parentDescriptor) => {
+        return String(state.arrayIndices[parentDescriptor.key] ?? "").trim() === "";
+      });
+
+      if (missingParent) {
+        window.alert(`请先选择上一级数组层级：${missingParent.key}`);
+        return;
+      }
+
+      const existingLevels = getAvailableArrayLevels(descriptors, descriptorIndex)
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0);
+      const nextLevel = String(existingLevels.length ? Math.max(...existingLevels) + 1 : 0);
+      const parentContext = getParentContextForDescriptor(descriptors, descriptorIndex);
+
+      registerArrayLevel(descriptor.key, nextLevel, parentContext);
+      state.arrayIndices[descriptor.key] = nextLevel;
+      registerArrayLevelsFromIndices(state.arrayIndices);
+      clearDescendantArrayLevels(descriptors, descriptorIndex);
+      renderArrayIndexInputs(templatePath);
+      updateSelectedPathOutput();
+      setStatus(`已新增数组索引 ${nextLevel}，请继续标注该索引下的字段。`);
+    }
+
+    function renderArrayIndexInputs(templatePath) {
+      const descriptors = getArrayTemplateDescriptors(templatePath);
+      els.arrayIndexFields.innerHTML = "";
+      els.arrayIndexGroup.style.display = descriptors.length ? "" : "none";
+
+      if (!descriptors.length) {
+        return;
+      }
+
+      descriptors.forEach((descriptor, index) => {
+        let levels = getAvailableArrayLevels(descriptors, index);
+        const currentValue = String(state.arrayIndices[descriptor.key] ?? "").trim();
+        if (currentValue && !levels.includes(currentValue)) {
+          registerArrayLevel(descriptor.key, currentValue, getParentContextForDescriptor(descriptors, index));
+          levels = getAvailableArrayLevels(descriptors, index);
+        }
+        if (!currentValue || !levels.includes(currentValue)) {
+          state.arrayIndices[descriptor.key] = levels[0];
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-group";
+
+        const labelRow = document.createElement("div");
+        labelRow.className = "label-row";
+        const label = document.createElement("label");
+        label.textContent = `第 ${index + 1} 个数组层级`;
+        labelRow.appendChild(label);
+
+        const row = document.createElement("div");
+        row.className = "array-level-row";
+        levels.forEach((level) => {
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = `array-level-chip${String(level) === String(state.arrayIndices[descriptor.key]) ? " active" : ""}`;
+          chip.textContent = `索引 ${level}`;
+          chip.addEventListener("click", () => {
+            state.arrayIndices[descriptor.key] = String(level);
+            clearDescendantArrayLevels(descriptors, index);
+            renderArrayIndexInputs(templatePath);
+            updateSelectedPathOutput();
+            setStatus(`已切换到数组索引 ${level}，可继续标注该索引下的字段。`);
+          });
+          row.appendChild(chip);
+        });
+
+        const addInlineButton = document.createElement("button");
+        addInlineButton.type = "button";
+        addInlineButton.className = "mini-button textual";
+        addInlineButton.textContent = "+ 新增";
+        addInlineButton.title = "新增数组索引";
+        addInlineButton.addEventListener("click", () => addArrayLevel(descriptors, index, templatePath));
+        row.appendChild(addInlineButton);
+
+        const levelHint = document.createElement("div");
+        levelHint.className = "hint";
+        levelHint.textContent = levels.length
+          ? `当前索引：${state.arrayIndices[descriptor.key]}；已有索引：${levels.join(" / ")}；点击“新增索引”会直接创建下一条`
+          : "暂无层级";
+
+        const hint = document.createElement("div");
+        hint.className = "hint mono";
+        hint.textContent = descriptor.key;
+
+        wrapper.appendChild(labelRow);
+        wrapper.appendChild(row);
+        wrapper.appendChild(levelHint);
+        wrapper.appendChild(hint);
+        els.arrayIndexFields.appendChild(wrapper);
+      });
+    }
+
+    function resetValidationOutput() {
+      els.validationOutput.textContent = "尚未执行校验。";
+    }
+
+    function setSchemaHelpContent(text, schemaHelpMeta) {
+      state.schemaHelpText = text;
+      state.schemaHelpMeta = { ...schemaHelpMeta };
+      updateSchemaHelpInfo();
+    }
+
+    function replaceSchemaPaths(paths, schemaMeta, schemaDefinition = null) {
+      const normalizedPaths = Array.from(new Set(paths.map(normalizeSchemaTemplatePathRaw).filter(Boolean)));
+      if (!normalizedPaths.length) {
+        throw new Error("未从该 Schema 中解析出可标注字段");
+      }
+
+      state.annotations = [];
+      state.schemaTemplatePaths = normalizedPaths;
+      state.schemaDefinition = deepCloneJson(schemaDefinition || buildTemplateDefinitionFromPaths(normalizedPaths));
+      state.schemaTree = buildSchemaTree(normalizedPaths);
+      state.schemaMeta = { ...schemaMeta };
+      state.selectedSegments = [];
+      state.arrayIndices = {};
+      state.arrayLevelRegistry = {};
+      clearForm({ keepDraft: false, keepCategories: false, keepArrayIndex: false });
+      updateSchemaInfo();
+      resetValidationOutput();
+      setStatus(`当前已切换到 ${state.schemaMeta.name}，请重新选择字段后继续标注。`);
+    }
+
+    function confirmSchemaReplacement() {
+      if (!state.annotations.length && !state.currentDraft) {
+        return true;
+      }
+      return window.confirm("切换 Schema 会清空当前草稿和已保存标注，是否继续？");
+    }
+
+    async function loadSchemaFromFile(file) {
+      if (!file) {
+        return;
+      }
+      if (!confirmSchemaReplacement()) {
+        els.schemaFileInput.value = "";
+        return;
+      }
+
+      const text = await file.text();
+      const parsed = parseJsonLikeSchema(text);
+      const extractedPaths = extractPathsFromSchemaDefinition(parsed);
+      replaceSchemaPaths(extractedPaths, {
+        name: file.name,
+        source: "upload"
+      }, parsed);
+      els.schemaFileInput.value = "";
+    }
+
+    async function loadSchemaHelpFromFile(file) {
+      if (!file) {
+        return;
+      }
+      const text = await file.text();
+      setSchemaHelpContent(text, {
+        name: file.name,
+        source: "upload"
+      });
+      els.schemaHelpFileInput.value = "";
+    }
+
+    function resetSchemaToDefault() {
+      if (state.schemaMeta.source === "built-in") {
+        return;
+      }
+      if (!confirmSchemaReplacement()) {
+        return;
+      }
+      replaceSchemaPaths(defaultSchemaPaths, defaultSchemaMeta);
+    }
+
+    function tokenizeSchemaPath(path) {
+      return path.split(".").map((segment) => {
+        if (segment.includes("[]")) {
+          return { key: segment.replace("[]", ""), isArray: true };
+        }
+        if (/\[\d+\]/.test(segment)) {
+          return { key: segment.replace(/\[\d+\]/, ""), isArray: true };
+        }
+        return { key: segment, isArray: false };
+      });
+    }
+
+    function buildPathOrderMap(paths) {
+      const orderMap = new Map();
+      let orderIndex = 0;
+
+      paths.forEach((path) => {
+        const prefixes = [];
+        tokenizeSchemaPath(path).forEach((segment) => {
+          prefixes.push(`${segment.key}${segment.isArray ? "[]" : ""}`);
+          const templatePath = prefixes.join(".");
+          if (!orderMap.has(templatePath)) {
+            orderMap.set(templatePath, orderIndex);
+            orderIndex += 1;
+          }
+        });
+      });
+
+      return orderMap;
+    }
+
+    function sortSchemaTreeChildren(container) {
+      const order = container.__order || [];
+      order.sort((leftKey, rightKey) => {
+        const leftNode = container[leftKey];
+        const rightNode = container[rightKey];
+        return (leftNode?.orderIndex ?? Number.MAX_SAFE_INTEGER)
+          - (rightNode?.orderIndex ?? Number.MAX_SAFE_INTEGER);
+      });
+
+      order.forEach((key) => {
+        const childNode = container[key];
+        if (childNode && childNode.children) {
+          sortSchemaTreeChildren(childNode.children);
+        }
+      });
+    }
+
+    function buildSchemaTree(paths) {
+      const orderMap = buildPathOrderMap(paths);
+      const root = { __order: [] };
+      paths.forEach((path) => {
+        let current = root;
+        tokenizeSchemaPath(path).forEach((segment, index, arr) => {
+          const templatePath = arr
+            .slice(0, index + 1)
+            .map((part) => part.key + (part.isArray ? "[]" : ""))
+            .join(".");
+          if (!current[segment.key]) {
+            current[segment.key] = {
+              name: segment.key,
+              isArray: segment.isArray,
+              children: {},
+              childOrder: [],
+              isLeaf: false,
+              templatePath,
+              orderIndex: orderMap.get(templatePath) ?? Number.MAX_SAFE_INTEGER
+            };
+            if (Array.isArray(current.__order) && !current.__order.includes(segment.key)) {
+              current.__order.push(segment.key);
+            }
+          } else if (segment.isArray) {
+            current[segment.key].isArray = true;
+          }
+          current[segment.key].orderIndex = Math.min(
+            current[segment.key].orderIndex ?? Number.MAX_SAFE_INTEGER,
+            orderMap.get(templatePath) ?? Number.MAX_SAFE_INTEGER
+          );
+          if (index === arr.length - 1) {
+            current[segment.key].isLeaf = true;
+          }
+          if (!Array.isArray(current[segment.key].children.__order)) {
+            current[segment.key].children.__order = [];
+          }
+          current = current[segment.key].children;
+        });
+      });
+      sortSchemaTreeChildren(root);
+      return root;
+    }
+
+    function getNodeOptionsAtLevel(level) {
+      let current = state.schemaTree;
+      for (let i = 0; i < level; i += 1) {
+        const key = state.selectedSegments[i];
+        if (!key || !current[key]) {
+          return [];
+        }
+        current = current[key].children;
+      }
+      const childOrder = current.__order || [];
+      return childOrder.map((key) => current[key]).filter(Boolean);
+    }
+
+    function getSelectedNodes() {
+      const nodes = [];
+      let current = state.schemaTree;
+      for (const key of state.selectedSegments) {
+        if (!key || !current[key]) {
+          break;
+        }
+        const node = current[key];
+        nodes.push(node);
+        current = node.children;
+      }
+      return nodes;
+    }
+
+    function getTreeContainerAtLevel(level) {
+      let current = state.schemaTree;
+      for (let i = 0; i < level; i += 1) {
+        const key = state.selectedSegments[i];
+        if (!key || !current[key]) {
+          return null;
+        }
+        current = current[key].children;
+      }
+      return current;
+    }
+
+    function getParentTemplatePathForLevel(level) {
+      if (level === 0) {
+        return "";
+      }
+      const nodes = getSelectedNodes();
+      const parentNode = nodes[level - 1];
+      return parentNode ? parentNode.templatePath : "";
+    }
+
+    function addCustomFieldAtLevel(level) {
+      const rawName = window.prompt("输入自定义字段名");
+      if (rawName == null) {
+        return;
+      }
+      const fieldName = rawName.trim();
+      if (!fieldName) {
+        return;
+      }
+      if (/[.[\]]/.test(fieldName)) {
+        window.alert("字段名不能包含 . [ ]");
+        return;
+      }
+
+      const container = getTreeContainerAtLevel(level);
+      if (!container) {
+        window.alert("当前层级还没有可挂载的位置");
+        return;
+      }
+      if (container[fieldName]) {
+        window.alert("该字段已存在");
+        return;
+      }
+
+      const parentTemplatePath = getParentTemplatePathForLevel(level);
+      const templatePath = parentTemplatePath ? `${parentTemplatePath}.${fieldName}` : fieldName;
+      container[fieldName] = {
+        name: fieldName,
+        isArray: false,
+        children: { __order: [] },
+        childOrder: [],
+        isLeaf: true,
+        isCustom: true,
+        templatePath
+      };
+      if (!Array.isArray(container.__order)) {
+        container.__order = [];
+      }
+      container.__order.push(fieldName);
+
+      state.selectedSegments = state.selectedSegments.slice(0, level);
+      state.selectedSegments[level] = fieldName;
+      renderLabelLevels();
+    }
+
+    function getSelectedTemplatePath() {
+      const nodes = getSelectedNodes();
+      if (!nodes.length) {
+        return "";
+      }
+      const leaf = nodes[nodes.length - 1];
+      return leaf.isLeaf ? leaf.templatePath : "";
+    }
+
+    function getSelectedContextTemplatePath() {
+      const nodes = getSelectedNodes();
+      if (!nodes.length) {
+        return "";
+      }
+      return nodes[nodes.length - 1].templatePath || "";
+    }
+
+    function getAnnotatedTemplateSet() {
+      return new Set(state.annotations.map((annotation) => annotation.schema_binding.schema_path_template));
+    }
+
+    function getNodeProgress(node, annotatedTemplates) {
+      const childKeys = node.children.__order || [];
+      if (node.isLeaf && childKeys.length === 0) {
+        const done = annotatedTemplates.has(node.templatePath) ? 1 : 0;
+        return { done, total: 1 };
+      }
+      if (!childKeys.length) {
+        const done = annotatedTemplates.has(node.templatePath) ? 1 : 0;
+        return { done, total: 1 };
+      }
+      return childKeys.reduce(
+        (acc, key) => {
+          const progress = getNodeProgress(node.children[key], annotatedTemplates);
+          acc.done += progress.done;
+          acc.total += progress.total;
+          return acc;
+        },
+        { done: 0, total: 0 }
+      );
+    }
+
+    function formatNodeOptionLabel(node, annotatedTemplates) {
+      const progress = getNodeProgress(node, annotatedTemplates);
+      const suffix = node.isLeaf && progress.total === 1
+        ? (progress.done ? "●" : "○")
+        : `${progress.done}/${progress.total}`;
+      return `${node.name}${node.isArray ? "[]" : ""} [${suffix}]`;
+    }
+
+    function updateSelectedPathOutput() {
+      const path = getSelectedTemplatePath();
+      const contextPath = getSelectedContextTemplatePath();
+      renderArrayIndexInputs(contextPath);
+      if (!path) {
+        els.selectedPathOutput.value = "";
+        const hasArrayContext = getArrayTemplateDescriptors(contextPath).length > 0;
+        if (state.currentDraft) {
+          setStatus(
+            hasArrayContext
+              ? `已框选第 ${state.currentPage} 页区域，请先选择数组层级，再继续选择子字段后保存。`
+              : `已框选第 ${state.currentPage} 页区域，请继续选择内容分类后保存。`
+          );
+        }
+        return;
+      }
+      els.selectedPathOutput.value = materializeFieldPath(path, state.arrayIndices, false) || path;
+      if (state.currentDraft) {
+        setStatus(`已框选第 ${state.currentPage} 页区域，可直接保存标注。`);
+      }
+    }
+
+    function renderLabelLevels() {
+      els.labelLevels.innerHTML = "";
+      const annotatedTemplates = getAnnotatedTemplateSet();
+      let level = 0;
+      while (true) {
+        const options = getNodeOptionsAtLevel(level);
+        if (!options.length) {
+          break;
+        }
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-group";
+        const labelRow = document.createElement("div");
+        labelRow.className = "label-row";
+        const label = document.createElement("label");
+        label.textContent = `第 ${level + 1} 级标签`;
+        const addButton = document.createElement("button");
+        addButton.type = "button";
+        addButton.className = "mini-button";
+        addButton.textContent = "+";
+        addButton.title = "添加自定义字段";
+        addButton.addEventListener("click", () => addCustomFieldAtLevel(level));
+        labelRow.appendChild(label);
+        labelRow.appendChild(addButton);
+        const select = document.createElement("select");
+        select.dataset.level = String(level);
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "请选择";
+        select.appendChild(placeholder);
+        options.forEach((node) => {
+          const option = document.createElement("option");
+          option.value = node.name;
+          option.textContent = formatNodeOptionLabel(node, annotatedTemplates);
+          select.appendChild(option);
+        });
+        select.value = state.selectedSegments[level] || "";
+        select.addEventListener("change", (event) => {
+          const selectedLevel = Number(event.target.dataset.level);
+          state.selectedSegments = state.selectedSegments.slice(0, selectedLevel);
+          if (event.target.value) {
+            state.selectedSegments[selectedLevel] = event.target.value;
+          }
+          renderLabelLevels();
+        });
+        wrapper.appendChild(labelRow);
+        wrapper.appendChild(select);
+        els.labelLevels.appendChild(wrapper);
+        if (!state.selectedSegments[level]) {
+          break;
+        }
+        level += 1;
+      }
+      updateSelectedPathOutput();
+    }
+
+    function selectPath(path) {
+      state.selectedSegments = tokenizeSchemaPath(path).map((segment) => segment.key);
+      renderLabelLevels();
+    }
+
+    function setStatus(text) {
+      els.draftStatus.textContent = text;
+    }
+
+    function setDocumentInfo(text) {
+      renderStatusChip(els.documentInfo, "当前文档", text);
+    }
+
+    function setViewMode(mode) {
+      state.viewMode = mode;
+      const showJson = mode === "json";
+      const showHelp = mode === "schema-help";
+      els.pdfViewPanel.classList.toggle("active", !showJson && !showHelp);
+      els.jsonPreviewPanel.classList.toggle("active", showJson);
+      els.schemaHelpPanel.classList.toggle("active", showHelp);
+      els.toggleViewButton.textContent = showJson ? "返回 PDF" : "查看 JSON";
+      els.toggleHelpViewButton.textContent = showHelp ? "返回 PDF" : "查看辅助注释";
+    }
+
+    function updateJsonPreview() {
+      const data = buildStructuredData();
+      els.jsonPreview.textContent = JSON.stringify(data, null, 2);
+      els.jsonPreviewMeta.textContent = state.annotations.length
+        ? `已保存 ${state.annotations.length} 条标注`
+        : "暂无标注";
+    }
+
+    async function renderPage(pageNumber) {
+      const page = await state.pdfDoc.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: state.scale });
+      const outputScale = state.pixelRatio;
+      const context = els.pdfCanvas.getContext("2d");
+      state.viewportWidth = viewport.width;
+      state.viewportHeight = viewport.height;
+      els.pdfCanvas.width = Math.floor(viewport.width * outputScale);
+      els.pdfCanvas.height = Math.floor(viewport.height * outputScale);
+      els.pdfCanvas.style.width = `${viewport.width}px`;
+      els.pdfCanvas.style.height = `${viewport.height}px`;
+      els.annotCanvas.width = Math.floor(viewport.width * outputScale);
+      els.annotCanvas.height = Math.floor(viewport.height * outputScale);
+      els.annotCanvas.style.width = `${viewport.width}px`;
+      els.annotCanvas.style.height = `${viewport.height}px`;
+
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, els.pdfCanvas.width, els.pdfCanvas.height);
+      await page.render({
+        canvasContext: context,
+        viewport,
+        transform: outputScale === 1 ? null : [outputScale, 0, 0, outputScale, 0, 0]
+      }).promise;
+      drawAnnotationsForPage(pageNumber);
+      renderStatusChip(els.pageInfo, "页码", `第 ${pageNumber} 页 / 共 ${state.totalPages} 页`);
+    }
+
+    function getColorForLabel(label) {
+      let hash = 0;
+      for (let i = 0; i < label.length; i += 1) {
+        hash = label.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const hue = Math.abs(hash) % 360;
+      return `hsl(${hue} 55% 48%)`;
+    }
+
+    function toRgba(hex, alpha) {
+      const value = hex.replace("#", "");
+      const parsed = Number.parseInt(value, 16);
+      const r = (parsed >> 16) & 255;
+      const g = (parsed >> 8) & 255;
+      const b = parsed & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function normalizeBox(box) {
+      let { x, y, w, h } = box;
+      if (w < 0) {
+        x += w;
+        w = Math.abs(w);
+      }
+      if (h < 0) {
+        y += h;
+        h = Math.abs(h);
+      }
+      return { x, y, w, h };
+    }
+
+    function drawAnnotationsForPage(pageNumber) {
+      const ctx = els.annotCanvas.getContext("2d");
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, els.annotCanvas.width, els.annotCanvas.height);
+      ctx.setTransform(state.pixelRatio, 0, 0, state.pixelRatio, 0, 0);
+
+      state.annotations.forEach((annotation) => {
+        if (annotation.page !== pageNumber || !annotation.bbox) {
+          return;
+        }
+        const { relX, relY, relW, relH, color } = annotation.bbox;
+        if (![relX, relY, relW, relH].every((value) => Number.isFinite(value))) {
+          return;
+        }
+        const x = relX * state.viewportWidth;
+        const y = relY * state.viewportHeight;
+        const w = relW * state.viewportWidth;
+        const h = relH * state.viewportHeight;
+        ctx.fillStyle = toRgba(color, annotation.id === state.editingId ? 0.34 : 0.18);
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = annotation.id === state.editingId ? 3 : 2;
+        ctx.strokeRect(x, y, w, h);
+      });
+
+      if (state.currentDraft && state.currentDraft.page === pageNumber) {
+        const box = normalizeBox(state.currentDraft.pixelBox);
+        ctx.setLineDash([8, 6]);
+        ctx.strokeStyle = "#111827";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.fillStyle = "rgba(17, 24, 39, 0.08)";
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.setLineDash([]);
+      }
+    }
+
+    async function getTextItemsForPage(pageNumber) {
+      if (state.textCache.has(pageNumber)) {
+        return state.textCache.get(pageNumber);
+      }
+      const page = await state.pdfDoc.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: state.scale });
+      const textContent = await page.getTextContent();
+      const items = textContent.items.map((item) => {
+        const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+        const fontHeight = Math.abs(item.height || 0) * state.scale || Math.hypot(tx[2], tx[3]) || 12;
+        const x = tx[4];
+        const y = tx[5];
+        const width = Math.abs(item.width || 0) * state.scale;
+        return {
+          str: item.str,
+          left: x,
+          top: y - fontHeight * 0.9,
+          right: x + width,
+          bottom: y,
+          centerX: x + width / 2,
+          centerY: y - fontHeight / 2,
+          width,
+          height: fontHeight
+        };
+      });
+      state.textCache.set(pageNumber, items);
+      return items;
+    }
+
+    function overlapRatio(startA, endA, startB, endB) {
+      const overlap = Math.max(0, Math.min(endA, endB) - Math.max(startA, startB));
+      const base = Math.max(1, endA - startA);
+      return overlap / base;
+    }
+
+    async function extractTextFromCurrentDraft() {
+      if (!state.currentDraft || !state.pdfDoc) {
+        return "";
+      }
+      const box = normalizeBox(state.currentDraft.pixelBox);
+      const items = await getTextItemsForPage(state.currentDraft.page);
+      const tolerance = 2;
+      const picked = items
+        .filter((item) => {
+          const centerInside =
+            item.centerX >= box.x + tolerance &&
+            item.centerX <= box.x + box.w - tolerance &&
+            item.centerY >= box.y + tolerance &&
+            item.centerY <= box.y + box.h - tolerance;
+          const horizontalOverlap = overlapRatio(item.left, item.right, box.x, box.x + box.w);
+          const verticalOverlap = overlapRatio(item.top, item.bottom, box.y, box.y + box.h);
+          return centerInside || (horizontalOverlap >= 0.65 && verticalOverlap >= 0.55);
+        })
+        .sort((a, b) => {
+          if (Math.abs(a.centerY - b.centerY) > 6) {
+            return a.centerY - b.centerY;
+          }
+          return a.left - b.left;
+        });
+
+      let result = "";
+      let lastCenterY = null;
+      picked.forEach((item) => {
+        if (!item.str || !item.str.trim()) {
+          return;
+        }
+        if (lastCenterY !== null && Math.abs(item.centerY - lastCenterY) > 8) {
+          result += "\n";
+        } else if (result && !result.endsWith("\n")) {
+          result += " ";
+        }
+        result += item.str.trim();
+        lastCenterY = item.centerY;
+      });
+      const extracted = result.trim();
+      els.rawTextInput.value = extracted;
+      if (!els.normalizedValueInput.value) {
+        els.normalizedValueInput.value = extracted;
+      }
+      return extracted;
+    }
+
+    function canvasToBase64(canvas) {
+      const dataUrl = canvas.toDataURL("image/png");
+      return dataUrl.split(",")[1];
+    }
+
+    function buildCropCanvasFromDraft() {
+      if (!state.currentDraft) {
+        throw new Error("请先框选一个区域");
+      }
+      const box = normalizeBox(state.currentDraft.pixelBox);
+      const padding = 8;
+      const upscale = 2;
+      const paddedX = Math.max(0, box.x - padding);
+      const paddedY = Math.max(0, box.y - padding);
+      const paddedW = Math.min(state.viewportWidth - paddedX, box.w + padding * 2);
+      const paddedH = Math.min(state.viewportHeight - paddedY, box.h + padding * 2);
+      const cropX = Math.round(paddedX * state.pixelRatio);
+      const cropY = Math.round(paddedY * state.pixelRatio);
+      const cropW = Math.max(1, Math.round(paddedW * state.pixelRatio));
+      const cropH = Math.max(1, Math.round(paddedH * state.pixelRatio));
+      const cropCanvas = document.createElement("canvas");
+      cropCanvas.width = cropW * upscale;
+      cropCanvas.height = cropH * upscale;
+      const cropCtx = cropCanvas.getContext("2d");
+      cropCtx.imageSmoothingEnabled = false;
+      cropCtx.drawImage(els.pdfCanvas, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
+      return cropCanvas;
+    }
+
+    async function runLocalOCR(options = {}) {
+      const { silent = false, preserveNormalized = true } = options;
+      if (!state.currentDraft) {
+        if (!silent) {
+          alert("请先框选一个区域");
+        }
+        return;
+      }
+      const endpoint = els.ocrEndpointInput.value.trim();
+      if (!endpoint) {
+        if (!silent) {
+          alert("请先填写 OCR 服务地址");
+        }
+        return;
+      }
+      try {
+        setStatus("正在调用本地 OCR 服务识别当前框选区域...");
+        const cropCanvas = buildCropCanvasFromDraft();
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            image_base64: canvasToBase64(cropCanvas),
+            lang: "ch"
+          })
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || `OCR 请求失败: ${response.status}`);
+        }
+        const payload = await response.json();
+        const text = (payload.text || "").trim();
+        if (text) {
+          els.rawTextInput.value = text;
+        }
+        if (!preserveNormalized || !els.normalizedValueInput.value.trim()) {
+          els.normalizedValueInput.value = text;
+        }
+        setStatus(text ? "OCR 识别完成，结果已回填。" : "OCR 已执行，但没有识别到文本。");
+        return text;
+      } catch (error) {
+        if (!silent) {
+          alert(`OCR 调用失败：${error.message}`);
+        }
+        setStatus("OCR 调用失败，请检查本地 OCR 服务是否已启动。");
+        return "";
+      }
+    }
+
+    async function populateDraftTextFromSelection() {
+      els.rawTextInput.value = "";
+      if (!els.normalizedValueInput.value.trim()) {
+        els.normalizedValueInput.value = "";
+      }
+      return runLocalOCR({ silent: true, preserveNormalized: true });
+    }
+
+    function clearForm(options = {}) {
+      const {
+        keepDraft = false,
+        keepCategories = true,
+        keepArrayIndex = false
+      } = options;
+      if (!keepArrayIndex) {
+        state.arrayIndices = {};
+      }
+      if (!keepCategories) {
+        state.selectedSegments = [];
+        renderLabelLevels();
+      } else {
+        updateSelectedPathOutput();
+      }
+      els.rawTextInput.value = "";
+      els.normalizedValueInput.value = "";
+      els.noteInput.value = "";
+      els.confidenceInput.value = "0.9";
+      if (!keepDraft) {
+        state.currentDraft = null;
+      }
+      state.editingId = null;
+      els.saveButton.textContent = "保存标注";
+      setStatus("先在左侧 PDF 上框选一个区域。");
+      drawAnnotationsForPage(state.currentPage);
+      refreshAnnotationList();
+      updateJsonPreview();
+    }
+
+    function createDraftFromBox(pixelBox) {
+      const box = normalizeBox(pixelBox);
+      state.currentDraft = {
+        page: state.currentPage,
+        pixelBox: box,
+        bbox: {
+          relX: box.x / state.viewportWidth,
+          relY: box.y / state.viewportHeight,
+          relW: box.w / state.viewportWidth,
+          relH: box.h / state.viewportHeight
+        }
+      };
+      state.editingId = null;
+      els.saveButton.textContent = "保存标注";
+      if (getSelectedTemplatePath()) {
+        setStatus(`已框选第 ${state.currentPage} 页区域，正在自动提取与 OCR 识别。`);
+      } else {
+        setStatus(`已框选第 ${state.currentPage} 页区域，正在自动提取与 OCR 识别；之后请选择内容分类并保存。`);
+      }
+      drawAnnotationsForPage(state.currentPage);
+      void populateDraftTextFromSelection();
+    }
+
+    function setupDrawing() {
+      const ctx = els.annotCanvas.getContext("2d");
+      let isDrawing = false;
+      let startX = 0;
+      let startY = 0;
+      let liveBox = null;
+
+      els.annotCanvas.addEventListener("mousedown", (event) => {
+        if (!state.pdfDoc) {
+          return;
+        }
+        const rect = els.annotCanvas.getBoundingClientRect();
+        startX = event.clientX - rect.left;
+        startY = event.clientY - rect.top;
+        liveBox = { x: startX, y: startY, w: 0, h: 0 };
+        isDrawing = true;
+      });
+
+      els.annotCanvas.addEventListener("mousemove", (event) => {
+        if (!isDrawing || !liveBox) {
+          return;
+        }
+        const rect = els.annotCanvas.getBoundingClientRect();
+        liveBox.w = event.clientX - rect.left - startX;
+        liveBox.h = event.clientY - rect.top - startY;
+        drawAnnotationsForPage(state.currentPage);
+        const box = normalizeBox(liveBox);
+        ctx.setLineDash([8, 6]);
+        ctx.strokeStyle = "#111827";
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.fillStyle = "rgba(17, 24, 39, 0.06)";
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+        ctx.setLineDash([]);
+      });
+
+      els.annotCanvas.addEventListener("mouseup", () => {
+        if (!isDrawing || !liveBox) {
+          return;
+        }
+        isDrawing = false;
+        const box = normalizeBox(liveBox);
+        liveBox = null;
+        if (box.w < 10 || box.h < 10) {
+          drawAnnotationsForPage(state.currentPage);
+          return;
+        }
+        if (state.screenshotMode) {
+          drawAnnotationsForPage(state.currentPage);
+          exportScreenshotFromBox(box);
+          state.screenshotMode = false;
+          setStatus("截图已下载，可继续标注。");
+          return;
+        }
+        clearForm({ keepDraft: true, keepCategories: true, keepArrayIndex: true });
+        createDraftFromBox(box);
+      });
+
+      els.annotCanvas.addEventListener("mouseleave", () => {
+        if (!isDrawing) {
+          return;
+        }
+        isDrawing = false;
+        liveBox = null;
+        drawAnnotationsForPage(state.currentPage);
+      });
+    }
+
+    function materializeFieldPath(templatePath, arrayIndexInput, throwOnMissing = true) {
+      const normalizedTemplatePath = (templatePath || "").trim();
+      if (!normalizedTemplatePath) {
+        if (throwOnMissing) {
+          throw new Error("请先按层级标签选择最终字段");
+        }
+        return "";
+      }
+
+      const segments = tokenizeSchemaPath(normalizedTemplatePath);
+      const templateParts = [];
+      const pathParts = [];
+
+      for (const segment of segments) {
+        templateParts.push(`${segment.key}${segment.isArray ? "[]" : ""}`);
+        if (!segment.isArray) {
+          pathParts.push(segment.key);
+          continue;
+        }
+
+        const arrayTemplatePath = templateParts.join(".");
+        const rawIndex = String(arrayIndexInput[arrayTemplatePath] ?? "").trim();
+        if (!rawIndex) {
+          if (throwOnMissing) {
+            throw new Error(`请填写数组索引：${arrayTemplatePath}`);
+          }
+          return normalizedTemplatePath;
+        }
+        if (!/^\d+$/.test(rawIndex)) {
+          throw new Error(`数组索引必须是非负整数：${arrayTemplatePath}`);
+        }
+        pathParts.push(`${segment.key}[${rawIndex}]`);
+      }
+
+      return pathParts.join(".");
+    }
+
+    function saveAnnotation() {
+      try {
+        const templatePath = getSelectedTemplatePath();
+        const fieldPath = materializeFieldPath(templatePath, state.arrayIndices, true);
+        const segments = tokenizeSchemaPath(fieldPath).map((segment) => segment.key);
+        const arrayDescriptors = getArrayTemplateDescriptors(templatePath);
+        const arrayIndices = arrayDescriptors.reduce((acc, descriptor) => {
+          const value = String(state.arrayIndices[descriptor.key] ?? "").trim();
+          if (value !== "") {
+            acc[descriptor.key] = Number(value);
+          }
+          return acc;
+        }, {});
+        const rawText = els.rawTextInput.value.trim();
+        const normalizedValue = (els.normalizedValueInput.value.trim() || rawText || "").trim();
+        const confidence = Number(els.confidenceInput.value || 0.9);
+        if (Number.isNaN(confidence) || confidence < 0 || confidence > 1) {
+          throw new Error("置信度必须在 0 到 1 之间");
+        }
+        const existingAnnotation = state.editingId
+          ? state.annotations.find((item) => item.id === state.editingId)
+          : null;
+        const bboxColor = getColorForLabel(segments[0] || fieldPath);
+        const bbox = state.currentDraft
+          ? {
+            ...state.currentDraft.bbox,
+            color: bboxColor
+          }
+          : (existingAnnotation?.bbox
+            ? {
+              ...existingAnnotation.bbox,
+              color: existingAnnotation.bbox.color || bboxColor
+            }
+            : null);
+        const page = state.currentDraft?.page ?? existingAnnotation?.page ?? state.currentPage ?? null;
+
+        const annotation = {
+          id: state.editingId || `anno_${Date.now()}`,
+          page,
+          content_label: {
+            levels: segments,
+            primary: segments[0] || "",
+            secondary: segments[1] || ""
+          },
+          schema_binding: {
+            field_path: fieldPath,
+            schema_path_template: templatePath,
+            array_index: arrayDescriptors.length ? (arrayIndices[arrayDescriptors[0].key] ?? null) : null,
+            array_indices: arrayIndices
+          },
+          bbox,
+          value: {
+            raw_text: rawText,
+            normalized: normalizedValue
+          },
+          note: els.noteInput.value.trim(),
+          confidence,
+          reviewed: false
+        };
+
+        registerArrayLevelsFromIndices(arrayIndices);
+
+        const index = state.annotations.findIndex((item) => item.id === annotation.id);
+        if (index >= 0) {
+          state.annotations[index] = annotation;
+        } else {
+          state.annotations.push(annotation);
+        }
+
+        clearForm({ keepDraft: false, keepCategories: true, keepArrayIndex: true });
+        refreshAnnotationList();
+        updateJsonPreview();
+        setStatus("标注已保存，可继续框选下一项。");
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function focusAnnotation(id) {
+      const annotation = state.annotations.find((item) => item.id === id);
+      if (!annotation) {
+        return;
+      }
+      state.currentPage = annotation.page || state.currentPage;
+      state.editingId = id;
+      if (annotation.bbox) {
+        state.currentDraft = {
+          page: annotation.page,
+          pixelBox: {
+            x: annotation.bbox.relX * state.viewportWidth,
+            y: annotation.bbox.relY * state.viewportHeight,
+            w: annotation.bbox.relW * state.viewportWidth,
+            h: annotation.bbox.relH * state.viewportHeight
+          },
+          bbox: {
+            relX: annotation.bbox.relX,
+            relY: annotation.bbox.relY,
+            relW: annotation.bbox.relW,
+            relH: annotation.bbox.relH
+          }
+        };
+      } else {
+        state.currentDraft = null;
+      }
+      if (state.pdfDoc) {
+        renderPage(state.currentPage).then(() => {
+          if (annotation.bbox && state.currentDraft) {
+            state.currentDraft.pixelBox = {
+              x: annotation.bbox.relX * state.viewportWidth,
+              y: annotation.bbox.relY * state.viewportHeight,
+              w: annotation.bbox.relW * state.viewportWidth,
+              h: annotation.bbox.relH * state.viewportHeight
+            };
+          }
+          drawAnnotationsForPage(state.currentPage);
+        });
+      }
+      state.arrayIndices = {};
+      const templatePath = annotation.schema_binding.schema_path_template || annotation.schema_binding.field_path;
+      getArrayTemplateDescriptors(templatePath).forEach((descriptor, index) => {
+        const explicitValue = annotation.schema_binding.array_indices
+          ? annotation.schema_binding.array_indices[descriptor.key]
+          : undefined;
+        const fallbackValue = index === 0 ? annotation.schema_binding.array_index : undefined;
+        const resolvedValue = explicitValue ?? fallbackValue;
+        if (resolvedValue != null && resolvedValue !== "") {
+          state.arrayIndices[descriptor.key] = String(resolvedValue);
+        }
+      });
+      selectPath(templatePath);
+      els.rawTextInput.value = annotation.value.raw_text || "";
+      els.normalizedValueInput.value = String(annotation.value.normalized ?? "");
+      els.noteInput.value = annotation.note || "";
+      els.confidenceInput.value = String(annotation.confidence ?? 0.9);
+      els.saveButton.textContent = "更新标注";
+      setStatus(`正在编辑 ${annotation.id}`);
+      refreshAnnotationList();
+    }
+
+    function deleteAnnotation(id) {
+      state.annotations = state.annotations.filter((item) => item.id !== id);
+      if (state.editingId === id) {
+        clearForm({ keepDraft: false, keepCategories: true, keepArrayIndex: true });
+      }
+      drawAnnotationsForPage(state.currentPage);
+      refreshAnnotationList();
+      updateJsonPreview();
+    }
+
+    function refreshAnnotationList() {
+      els.annotationsList.innerHTML = "";
+      if (!state.annotations.length) {
+        els.annotationsList.innerHTML = '<div class="status">暂无标注。</div>';
+        return;
+      }
+      state.annotations
+        .slice()
+        .sort((a, b) => (Number(a.page) || Number.MAX_SAFE_INTEGER) - (Number(b.page) || Number.MAX_SAFE_INTEGER))
+        .forEach((annotation) => {
+          const item = document.createElement("div");
+          item.className = `anno-item${annotation.id === state.editingId ? " active" : ""}`;
+          item.style.borderLeft = `5px solid ${annotation.bbox?.color || getColorForLabel(annotation.content_label.primary || annotation.schema_binding.field_path || annotation.id)}`;
+
+          const head = document.createElement("div");
+          head.className = "anno-head";
+          const title = document.createElement("div");
+          title.className = "anno-title";
+          title.textContent = (annotation.content_label.levels || [annotation.content_label.primary, annotation.content_label.secondary])
+            .filter(Boolean)
+            .join(" / ");
+          head.appendChild(title);
+
+          const actions = document.createElement("div");
+          actions.className = "anno-actions";
+          const editButton = document.createElement("button");
+          editButton.textContent = "编辑";
+          editButton.addEventListener("click", () => focusAnnotation(annotation.id));
+          const deleteButton = document.createElement("button");
+          deleteButton.textContent = "删除";
+          deleteButton.className = "danger";
+          deleteButton.addEventListener("click", () => deleteAnnotation(annotation.id));
+          actions.appendChild(editButton);
+          actions.appendChild(deleteButton);
+          head.appendChild(actions);
+
+          const meta = document.createElement("div");
+          meta.className = "anno-meta";
+          meta.textContent = `${annotation.page ? `页码 ${annotation.page}` : "未框选区域"} | ${annotation.id}`;
+
+          const path = document.createElement("div");
+          path.className = "mono anno-meta";
+          path.textContent = annotation.schema_binding.field_path;
+
+          const text = document.createElement("div");
+          text.textContent = annotation.value.raw_text || String(annotation.value.normalized ?? "");
+
+          item.appendChild(head);
+          item.appendChild(meta);
+          item.appendChild(path);
+          item.appendChild(text);
+          els.annotationsList.appendChild(item);
+        });
+    }
+
+    function tokenizePath(path) {
+      return path.split(".").flatMap((part) => {
+        const tokens = [];
+        const regex = /([^[\]]+)|\[(\d+)\]/g;
+        let match;
+        while ((match = regex.exec(part)) !== null) {
+          if (match[1]) {
+            tokens.push(match[1]);
+          } else {
+            tokens.push(Number(match[2]));
+          }
+        }
+        return tokens;
+      });
+    }
+
+    function setDeepValue(target, path, value) {
+      const tokens = tokenizePath(path);
+      let current = target;
+      for (let i = 0; i < tokens.length; i += 1) {
+        const token = tokens[i];
+        const isLast = i === tokens.length - 1;
+        const nextToken = tokens[i + 1];
+
+        if (isLast) {
+          current[token] = value;
+          return;
+        }
+
+        if (current[token] == null) {
+          current[token] = typeof nextToken === "number" ? [] : {};
+        }
+        current = current[token];
+      }
+    }
+
+    function getExportArrayLevels(descriptorKey, parentContext = {}) {
+      const values = new Set();
+      const registryKey = getRegistryKeyForArray(descriptorKey, parentContext);
+
+      (state.arrayLevelRegistry[registryKey] || []).forEach((value) => {
+        if (value != null && value !== "") {
+          values.add(String(value));
+        }
+      });
+
+      state.annotations.forEach((annotation) => {
+        const annotationIndices = getAnnotationArrayIndices(annotation);
+        const matchesParents = Object.entries(parentContext).every(([key, value]) => {
+          return annotationIndices[key] === String(value);
+        });
+        if (!matchesParents) {
+          return;
+        }
+        const level = annotationIndices[descriptorKey];
+        if (level != null && level !== "") {
+          values.add(String(level));
+        }
+      });
+
+      return Array.from(values).sort((left, right) => Number(left) - Number(right));
+    }
+
+    function instantiateSchemaValue(definition, currentTemplatePath = "", parentContext = {}) {
+      if (definition == null || typeof definition !== "object") {
+        return null;
+      }
+
+      if (Array.isArray(definition)) {
+        const descriptorKey = currentTemplatePath ? `${currentTemplatePath}[]` : "";
+        const levels = descriptorKey ? getExportArrayLevels(descriptorKey, parentContext) : [];
+        if (!levels.length) {
+          return null;
+        }
+
+        const firstItem = definition[0] ?? null;
+        const mergedItemTemplate = Array.isArray(firstItem)
+          ? firstItem
+          : (firstItem && typeof firstItem === "object"
+            ? mergeArrayItemTemplates(definition)
+            : firstItem);
+
+        return levels.map((level) => instantiateSchemaValue(
+          mergedItemTemplate,
+          descriptorKey,
+          {
+            ...parentContext,
+            [descriptorKey]: String(level)
+          }
+        ));
+      }
+
+      const result = {};
+      Object.entries(definition).forEach(([key, value]) => {
+        const nextPath = currentTemplatePath ? `${currentTemplatePath}.${key}` : key;
+        result[key] = instantiateSchemaValue(value, nextPath, parentContext);
+      });
+      return result;
+    }
+
+    function buildStructuredData() {
+      const data = instantiateSchemaValue(state.schemaDefinition || buildTemplateDefinitionFromPaths(state.schemaTemplatePaths));
+      state.annotations.forEach((annotation) => {
+        const fieldPath = annotation.schema_binding.field_path;
+        setDeepValue(data, fieldPath, annotation.value.normalized);
+      });
+      return data;
+    }
+
+    function validateAnnotations() {
+      const errors = [];
+      const warnings = [];
+      const seenPaths = new Map();
+
+      state.annotations.forEach((annotation) => {
+        const path = annotation.schema_binding.field_path;
+        if (!path) {
+          errors.push(`${annotation.id}: 缺少 Schema 字段路径`);
+        }
+        if (
+          annotation.schema_binding.schema_path_template
+          && !state.schemaTemplatePaths.includes(annotation.schema_binding.schema_path_template)
+        ) {
+          warnings.push(`${annotation.id}: 当前字段模板已不在现用 Schema 中`);
+        }
+        if (!annotation.value.raw_text && annotation.value.normalized === "") {
+          warnings.push(`${annotation.id}: 原文摘录和结构化值都为空`);
+        }
+        if (path.includes("[]")) {
+          errors.push(`${annotation.id}: 字段路径仍包含 []，未替换为具体索引`);
+        }
+        const previous = seenPaths.get(path);
+        const currentValue = annotation.value.normalized;
+        if (previous && previous !== currentValue) {
+          warnings.push(`${annotation.id}: 与同路径字段存在不同值 ${path}`);
+        } else {
+          seenPaths.set(path, currentValue);
+        }
+      });
+
+      return { errors, warnings };
+    }
+
+    function renderValidation(result) {
+      const lines = [];
+      lines.push(`错误 ${result.errors.length} 项`);
+      result.errors.forEach((item) => lines.push(`- ${item}`));
+      lines.push(`警告 ${result.warnings.length} 项`);
+      result.warnings.forEach((item) => lines.push(`- ${item}`));
+      els.validationOutput.textContent = lines.join("\n");
+    }
+
+    function exportAnnotations() {
+      const validation = validateAnnotations();
+      renderValidation(validation);
+      if (validation.errors.length) {
+        alert("存在校验错误，无法导出。");
+        return;
+      }
+
+      const exportedJson = buildStructuredData();
+      const fileBaseName = state.pdfName ? state.pdfName.replace(/\.pdf$/i, "") : "paper";
+      const blob = new Blob([JSON.stringify(exportedJson, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileBaseName}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportScreenshotFromBox(box) {
+      const cropX = Math.round(box.x * state.pixelRatio);
+      const cropY = Math.round(box.y * state.pixelRatio);
+      const cropW = Math.max(1, Math.round(box.w * state.pixelRatio));
+      const cropH = Math.max(1, Math.round(box.h * state.pixelRatio));
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = cropW;
+      exportCanvas.height = cropH;
+      const exportCtx = exportCanvas.getContext("2d");
+      exportCtx.drawImage(els.pdfCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      exportCtx.drawImage(els.annotCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+      const fileBaseName = state.pdfName ? state.pdfName.replace(/\.pdf$/i, "") : "pdf";
+      const link = document.createElement("a");
+      link.href = exportCanvas.toDataURL("image/png");
+      link.download = `${fileBaseName}-page-${state.currentPage}-crop.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function startScreenshotMode() {
+      if (!state.pdfDoc) {
+        alert("请先加载 PDF");
+        return;
+      }
+      if (state.viewMode !== "pdf") {
+        alert("请先切换回 PDF 视图再截图");
+        return;
+      }
+      state.screenshotMode = true;
+      setStatus("截图模式已开启，请在 PDF 上框选要下载的区域。");
+    }
+
+    async function loadPdf(file) {
+      const reader = new FileReader();
+      reader.onload = async function onLoad() {
+        try {
+          const typedArray = new Uint8Array(this.result);
+          state.pdfDoc = await pdfjsLib.getDocument({ data: typedArray }).promise;
+          state.pdfName = file.name;
+          state.currentPage = 1;
+          state.totalPages = state.pdfDoc.numPages;
+          state.annotations = [];
+          state.arrayLevelRegistry = {};
+          state.currentDraft = null;
+          state.editingId = null;
+          state.textCache.clear();
+          clearForm({ keepDraft: false, keepCategories: false, keepArrayIndex: false });
+          resetValidationOutput();
+          await renderPage(state.currentPage);
+          setDocumentInfo(`已加载 ${file.name}`);
+          setStatus("先在左侧 PDF 上框选一个区域。");
+          updateJsonPreview();
+        } catch (error) {
+          alert(`加载 PDF 失败: ${error.message}`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    document.getElementById("prev-page").addEventListener("click", async () => {
+      if (!state.pdfDoc || state.currentPage <= 1) {
+        return;
+      }
+      state.currentPage -= 1;
+      await renderPage(state.currentPage);
+    });
+
+    document.getElementById("next-page").addEventListener("click", async () => {
+      if (!state.pdfDoc || state.currentPage >= state.totalPages) {
+        return;
+      }
+      state.currentPage += 1;
+      await renderPage(state.currentPage);
+    });
+
+    document.getElementById("zoom-in").addEventListener("click", async () => {
+      if (!state.pdfDoc) {
+        return;
+      }
+      state.scale = Math.min(state.scale + 0.2, 3);
+      state.textCache.delete(state.currentPage);
+      await renderPage(state.currentPage);
+    });
+
+    els.toggleViewButton.addEventListener("click", () => {
+      const nextMode = state.viewMode === "json" ? "pdf" : "json";
+      setViewMode(nextMode);
+      if (nextMode === "json") {
+        updateJsonPreview();
+      }
+    });
+
+    document.getElementById("zoom-out").addEventListener("click", async () => {
+      if (!state.pdfDoc) {
+        return;
+      }
+      state.scale = Math.max(state.scale - 0.2, 0.6);
+      state.textCache.delete(state.currentPage);
+      await renderPage(state.currentPage);
+    });
+
+    document.getElementById("refresh-text").addEventListener("click", () => {
+      void populateDraftTextFromSelection();
+    });
+
+    document.getElementById("clear-draft").addEventListener("click", () => {
+      clearForm({ keepDraft: false, keepCategories: true, keepArrayIndex: true });
+    });
+
+    els.cancelEditButton.addEventListener("click", () => {
+      clearForm({ keepDraft: false, keepCategories: true, keepArrayIndex: true });
+    });
+
+    document.getElementById("validate-json").addEventListener("click", () => {
+      renderValidation(validateAnnotations());
+    });
+
+    document.getElementById("download-screenshot").addEventListener("click", startScreenshotMode);
+    document.getElementById("export-json").addEventListener("click", exportAnnotations);
+    document.getElementById("save-annotation").addEventListener("click", saveAnnotation);
+    document.getElementById("file-input").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        void loadPdf(file);
+      }
+    });
+    els.schemaFileInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        void loadSchemaFromFile(file).catch((error) => {
+          els.schemaFileInput.value = "";
+          window.alert(`加载 Schema 失败：${error.message}`);
+        });
+      }
+    });
+    els.schemaHelpFileInput.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        void loadSchemaHelpFromFile(file).catch((error) => {
+          els.schemaHelpFileInput.value = "";
+          window.alert(`加载辅助注释失败：${error.message}`);
+        });
+      }
+    });
+    els.resetSchemaButton.addEventListener("click", resetSchemaToDefault);
+    els.toggleHelpViewButton.addEventListener("click", () => {
+      if (state.schemaHelpMeta.source === "none") {
+        window.alert("请先上传 json_schema.jsonc 辅助注释文件");
+        return;
+      }
+      const nextMode = state.viewMode === "schema-help" ? "pdf" : "schema-help";
+      setViewMode(nextMode);
+    });
+
+    state.schemaTree = buildSchemaTree(state.schemaTemplatePaths);
+    setViewMode("pdf");
+    updateSchemaInfo();
+    updateSchemaHelpInfo();
+    updateJsonPreview();
+    renderLabelLevels();
+    setupDrawing();
+    refreshAnnotationList();
+  </script>
+</body>
+</html>

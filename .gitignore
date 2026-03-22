@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Local runtime caches
+backend/.runtime/
+
+# OS / editor
+.DS_Store
+
+# Logs
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node / misc
+node_modules/
