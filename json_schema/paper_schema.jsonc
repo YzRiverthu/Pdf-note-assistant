@@ -83,7 +83,15 @@
           }
         ],
         // defects：null | 一段概括字符串 | 对象数组（缺陷分条）；叶子仍为字符串/null
-        "defects": null,
+        "defects": [
+          {
+            "type": null, // 缺陷类型：twin、vacancy、dislocation
+            "porosity": null, // 孔隙率 / 孔隙度
+            "inclusions": [], // 夹杂物
+            "dislocation_density": "low", // 位错密度
+            "lattice_distortion": "non-deformed BCC phase shows uniform IQ contrast; no martensite detected before deformation" //晶格畸变情况
+          }
+        ],
         "grain_structure": {
           "average_grain_size": {
             "value": null, // 平均晶粒尺寸数值，字符串

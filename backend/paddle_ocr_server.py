@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import io
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -54,14 +56,55 @@ def get_ocr_engine(lang: str = "ch") -> Any:
     return ocr_engine
 
 
+def ocr_result_to_plain(obj: Any) -> Any:
+    """将 PaddleOCR 3.x / PaddleX 的 predict 结果转为可遍历的 dict/list。"""
+    if obj is None:
+        return None
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, dict):
+        return {str(k): ocr_result_to_plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [ocr_result_to_plain(x) for x in obj]
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        try:
+            return ocr_result_to_plain(dataclasses.asdict(obj))
+        except Exception:
+            pass
+    if hasattr(obj, "json") and callable(getattr(obj, "json")):
+        try:
+            data = obj.json()
+            if isinstance(data, str):
+                return json.loads(data)
+            return ocr_result_to_plain(data)
+        except Exception:
+            pass
+    if hasattr(obj, "to_dict") and callable(getattr(obj, "to_dict")):
+        try:
+            return ocr_result_to_plain(obj.to_dict())
+        except Exception:
+            pass
+    if hasattr(obj, "__dict__"):
+        try:
+            return ocr_result_to_plain(vars(obj))
+        except Exception:
+            pass
+    return str(obj)
+
+
 def collect_ocr_items(node: Any, output: list[dict[str, Any]]) -> None:
     if node is None:
         return
 
     if isinstance(node, dict):
-        if isinstance(node.get("rec_texts"), list):
-            texts = node.get("rec_texts") or []
-            scores = node.get("rec_scores") or []
+        # PaddleX：rec_texts；部分版本写作 rec_text
+        texts = node.get("rec_texts")
+        if texts is None and isinstance(node.get("rec_text"), list):
+            texts = node.get("rec_text")
+        if isinstance(texts, list):
+            scores = node.get("rec_scores") or node.get("rec_score") or []
             polys = node.get("dt_polys") or node.get("rec_polys") or node.get("dt_boxes") or []
             for index, text in enumerate(texts):
                 if not text:
@@ -141,9 +184,11 @@ def ocr_endpoint(payload: OCRRequest) -> dict[str, Any]:
     image_array = np.array(image)
     engine = get_ocr_engine(payload.lang)
     result = engine.ocr(image_array)
+    # PaddleOCR 3.x / PaddleX 返回对象或嵌套结构，先规范化为 dict/list 再解析
+    plain = ocr_result_to_plain(result)
 
     raw_items: list[dict[str, Any]] = []
-    collect_ocr_items(result, raw_items)
+    collect_ocr_items(plain, raw_items)
     lines = [item["text"] for item in raw_items if item.get("text")]
 
     return {

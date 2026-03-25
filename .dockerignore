@@ -1,0 +1,33 @@
+# Git / VCS
+.git
+.gitignore
+**/.git
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# OCR / Paddle 本机运行时缓存（体积大，应在容器内首次运行时生成或挂卷）
+backend/.runtime/
+
+# 前端「保存会话」使用浏览器 IndexedDB，不在仓库与镜像内产生文件，无需在此排除
+
+# 编辑器与系统
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# 日志
+*.log
+
+# Node（若将来有）
+node_modules/

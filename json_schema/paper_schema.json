@@ -69,7 +69,15 @@
             "texture": null 
           }
         ],
-        "defects": null,
+        "defects": [
+          {
+            "type": null, 
+            "porosity": null,
+            "inclusions": [], 
+            "dislocation_density": null, 
+            "lattice_distortion": null
+          }
+        ],
         "grain_structure": {
           "average_grain_size": {
             "value": null, 

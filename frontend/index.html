@@ -47,65 +47,130 @@
       z-index: 10;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 10px 14px;
+      gap: 0;
+      padding: 0;
       background: rgba(248, 244, 236, 0.94);
       border-bottom: 1px solid var(--line);
       backdrop-filter: blur(10px);
     }
 
-    .toolbar-top {
+    #toolbar.toolbar-collapsed #toolbar-body {
+      display: none;
+    }
+
+    .toolbar-strip {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      padding: 6px 10px;
+      min-height: 40px;
       min-width: 0;
     }
 
-    .toolbar-brand {
+    .toolbar-toggle {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .toolbar-strip-brand {
       display: flex;
-      align-items: baseline;
-      gap: 10px;
-      min-width: 220px;
-      padding-right: 10px;
+      flex-direction: column;
+      gap: 0;
+      flex: 0 0 auto;
+      line-height: 1.2;
     }
 
     .toolbar-title {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 800;
       letter-spacing: 0.01em;
       white-space: nowrap;
     }
 
     .toolbar-subtitle {
-      font-size: 12px;
+      font-size: 10px;
       color: var(--muted);
       white-space: nowrap;
+    }
+
+    .toolbar-strip-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .toolbar-strip-meta .status-chip {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .toolbar-strip-meta .status-chip strong {
+      font-size: 9px;
+      margin-bottom: 1px;
+    }
+
+    .toolbar-strip-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    .toolbar-strip-actions button {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 10px;
+    }
+
+    #toolbar-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0 10px 8px;
+    }
+
+    .toolbar-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .toolbar-brand {
+      display: none;
     }
 
     .toolbar-meta {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
       flex: 1;
       min-width: 0;
     }
 
     .status-chip {
       min-width: 0;
-      padding: 7px 10px;
+      padding: 5px 8px;
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 8px;
       background: rgba(255, 255, 255, 0.74);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
-      line-height: 1.35;
+      line-height: 1.3;
       overflow: hidden;
     }
 
     .status-chip strong {
       display: block;
       margin-bottom: 2px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       color: var(--text);
       letter-spacing: 0.04em;
@@ -115,41 +180,41 @@
     .toolbar-ribbon {
       display: grid;
       grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
+      gap: 6px;
       min-width: 0;
     }
 
     .ribbon-group {
       display: flex;
       align-items: stretch;
-      gap: 8px;
+      gap: 6px;
       min-width: 0;
-      padding: 8px;
+      padding: 6px;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 10px;
       background: rgba(255, 255, 255, 0.72);
     }
 
     .ribbon-group-title {
-      width: 54px;
-      flex: 0 0 54px;
+      width: 44px;
+      flex: 0 0 44px;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: var(--muted);
       background: rgba(239, 231, 216, 0.74);
       border-radius: 8px;
-      padding: 6px 4px;
-      line-height: 1.25;
+      padding: 4px 3px;
+      line-height: 1.2;
     }
 
     .toolbar-uploads {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
       flex: 1;
       min-width: 0;
     }
@@ -157,36 +222,42 @@
     .upload-group {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       min-width: 0;
     }
 
     .upload-group label {
       margin: 0;
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text);
       font-weight: 700;
     }
 
     .upload-group input[type="file"] {
-      padding: 6px 8px;
-      font-size: 12px;
-      border-radius: 8px;
+      padding: 4px 6px;
+      font-size: 11px;
+      border-radius: 6px;
       background: #fffdf8;
     }
 
     .upload-group .hint {
       margin: 0;
-      font-size: 11px;
-      line-height: 1.3;
+      font-size: 10px;
+      line-height: 1.25;
     }
 
     .toolbar-actions {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      gap: 6px;
       flex: 1;
       min-width: 0;
+    }
+
+    .toolbar-actions button {
+      padding: 7px 8px;
+      font-size: 11px;
+      border-radius: 10px;
     }
 
     #main {
@@ -557,13 +628,13 @@
     }
 
     @media (max-width: 1080px) {
+      .toolbar-strip {
+        flex-wrap: wrap;
+      }
+
       .toolbar-top {
         flex-direction: column;
         align-items: stretch;
-      }
-
-      .toolbar-brand {
-        min-width: 0;
       }
 
       .toolbar-meta {
@@ -620,60 +691,74 @@
 </head>
 <body>
   <div id="toolbar">
-    <div class="toolbar-top">
-      <div class="toolbar-brand">
+    <div class="toolbar-strip">
+      <button type="button" id="toolbar-toggle" class="toolbar-toggle" aria-expanded="true" title="展开或收起下方工具区">收起工具区</button>
+      <div class="toolbar-strip-brand">
         <div class="toolbar-title">PDF 标注工作台</div>
-        <div class="toolbar-subtitle">以标注为中心的结构化抽取界面</div>
+        <div class="toolbar-subtitle">结构化抽取</div>
       </div>
-      <div class="toolbar-meta">
-        <div id="page-info" class="status-chip"><strong>页码</strong>第 0 页 / 共 0 页</div>
-        <div id="document-info" class="status-chip"><strong>当前文档</strong>未加载 PDF</div>
-        <div id="schema-info" class="status-chip"><strong>标注 Schema</strong>内置默认字段树</div>
-        <div id="schema-help-info" class="status-chip"><strong>辅助说明</strong>未加载</div>
+      <div class="toolbar-strip-meta">
+        <div id="page-info-strip" class="status-chip"><strong>页码</strong>第 0 页 / 共 0 页</div>
+        <div id="document-info-strip" class="status-chip"><strong>文档</strong>未加载</div>
+        <div id="schema-info-strip" class="status-chip"><strong>Schema</strong>内置默认</div>
+      </div>
+      <div class="toolbar-strip-actions">
+        <button type="button" id="save-session" title="将当前 PDF、Schema 与标注保存到本机浏览器">保存会话</button>
       </div>
     </div>
 
-    <div class="toolbar-ribbon">
-      <div class="ribbon-group">
-        <div class="ribbon-group-title">文件</div>
-        <div class="toolbar-uploads">
-          <div class="upload-group">
-            <label for="file-input">PDF 原文</label>
-            <input type="file" id="file-input" accept="application/pdf">
-            <div class="hint">上传待标注 PDF</div>
-          </div>
-          <div class="upload-group">
-            <label for="schema-file-input">标注 Schema</label>
-            <input type="file" id="schema-file-input" accept=".json,application/json">
-            <div class="hint">上传 `json_schema.json`</div>
-          </div>
-          <div class="upload-group">
-            <label for="schema-help-file-input">辅助说明</label>
-            <input type="file" id="schema-help-file-input" accept=".jsonc,.json,text/plain">
-            <div class="hint">上传 `json_schema.jsonc`</div>
-          </div>
+    <div id="toolbar-body">
+      <div class="toolbar-top">
+        <div class="toolbar-meta">
+          <div id="page-info" class="status-chip"><strong>页码</strong>第 0 页 / 共 0 页</div>
+          <div id="document-info" class="status-chip"><strong>当前文档</strong>未加载 PDF</div>
+          <div id="schema-info" class="status-chip"><strong>标注 Schema</strong>内置默认字段树</div>
+          <div id="schema-help-info" class="status-chip"><strong>辅助说明</strong>未加载</div>
         </div>
       </div>
 
-      <div class="ribbon-group">
-        <div class="ribbon-group-title">页面</div>
-        <div class="toolbar-actions">
-          <button id="prev-page">上一页</button>
-          <button id="next-page">下一页</button>
-          <button id="zoom-out">缩小</button>
-          <button id="zoom-in">放大</button>
+      <div class="toolbar-ribbon">
+        <div class="ribbon-group">
+          <div class="ribbon-group-title">文件</div>
+          <div class="toolbar-uploads">
+            <div class="upload-group">
+              <label for="file-input">PDF 原文</label>
+              <input type="file" id="file-input" accept="application/pdf">
+              <div class="hint">上传待标注 PDF</div>
+            </div>
+            <div class="upload-group">
+              <label for="schema-file-input">标注 Schema</label>
+              <input type="file" id="schema-file-input" accept=".json,application/json">
+              <div class="hint">上传 `json_schema.json`</div>
+            </div>
+            <div class="upload-group">
+              <label for="schema-help-file-input">辅助说明</label>
+              <input type="file" id="schema-help-file-input" accept=".jsonc,.json,text/plain">
+              <div class="hint">上传 `json_schema.jsonc`</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="ribbon-group">
-        <div class="ribbon-group-title">标注</div>
-        <div class="toolbar-actions">
-          <button id="reset-schema">恢复默认</button>
-          <button id="toggle-help-view">辅助说明</button>
-          <button id="download-screenshot">截图</button>
-          <button id="toggle-view" class="highlight">查看 JSON</button>
-          <button id="validate-json">校验</button>
-          <button id="export-json" class="primary">导出 JSON</button>
+        <div class="ribbon-group">
+          <div class="ribbon-group-title">页面</div>
+          <div class="toolbar-actions">
+            <button id="prev-page">上一页</button>
+            <button id="next-page">下一页</button>
+            <button id="zoom-out">缩小</button>
+            <button id="zoom-in">放大</button>
+          </div>
+        </div>
+
+        <div class="ribbon-group">
+          <div class="ribbon-group-title">标注</div>
+          <div class="toolbar-actions">
+            <button id="reset-schema">恢复默认</button>
+            <button id="toggle-help-view">辅助说明</button>
+            <button id="download-screenshot">截图</button>
+            <button id="toggle-view" class="highlight">查看 JSON</button>
+            <button id="validate-json">校验</button>
+            <button id="export-json" class="primary">导出 JSON</button>
+          </div>
         </div>
       </div>
     </div>
@@ -909,7 +994,9 @@
 
     const state = {
       pdfDoc: null,
+      pdfDataBuffer: null,
       pdfName: "",
+      schemaFileText: null,
       currentPage: 1,
       totalPages: 0,
       scale: 1.25,
@@ -937,15 +1024,22 @@
     };
 
     const els = {
+      toolbar: document.getElementById("toolbar"),
+      toolbarBody: document.getElementById("toolbar-body"),
+      toolbarToggle: document.getElementById("toolbar-toggle"),
+      saveSessionButton: document.getElementById("save-session"),
       fileInput: document.getElementById("file-input"),
       schemaFileInput: document.getElementById("schema-file-input"),
       schemaHelpFileInput: document.getElementById("schema-help-file-input"),
       resetSchemaButton: document.getElementById("reset-schema"),
       toggleHelpViewButton: document.getElementById("toggle-help-view"),
       pageInfo: document.getElementById("page-info"),
+      pageInfoStrip: document.getElementById("page-info-strip"),
       schemaInfo: document.getElementById("schema-info"),
+      schemaInfoStrip: document.getElementById("schema-info-strip"),
       schemaHelpInfo: document.getElementById("schema-help-info"),
       documentInfo: document.getElementById("document-info"),
+      documentInfoStrip: document.getElementById("document-info-strip"),
       toggleViewButton: document.getElementById("toggle-view"),
       pdfViewPanel: document.getElementById("pdf-view-panel"),
       jsonPreviewPanel: document.getElementById("json-preview-panel"),
@@ -977,10 +1071,15 @@
     }
 
     function updateSchemaInfo() {
+      const full = `${state.schemaMeta.name}（${state.schemaTemplatePaths.length} 个末级字段）`;
+      renderStatusChip(els.schemaInfo, "标注 Schema", full);
+      const shortName = state.schemaMeta.name.length > 22
+        ? `${state.schemaMeta.name.slice(0, 20)}…`
+        : state.schemaMeta.name;
       renderStatusChip(
-        els.schemaInfo,
-        "标注 Schema",
-        `${state.schemaMeta.name}（${state.schemaTemplatePaths.length} 个末级字段）`
+        els.schemaInfoStrip,
+        "Schema",
+        `${shortName} · ${state.schemaTemplatePaths.length} 项`
       );
     }
 
@@ -989,9 +1088,185 @@
         ? "未加载"
         : state.schemaHelpMeta.name;
       renderStatusChip(els.schemaHelpInfo, "辅助说明", text);
-      els.schemaHelpMeta.textContent = text;
       els.toggleHelpViewButton.disabled = state.schemaHelpMeta.source === "none";
       els.schemaHelpPreview.textContent = state.schemaHelpText || "请上传 `json_schema.jsonc` 后在这里查看带注释的辅助说明。";
+    }
+
+    function setPageInfoChips(pageNumber) {
+      const t = `第 ${pageNumber} 页 / 共 ${state.totalPages} 页`;
+      renderStatusChip(els.pageInfo, "页码", t);
+      renderStatusChip(els.pageInfoStrip, "页码", t);
+    }
+
+    const SESSION_DB = { name: "pdf-annotate-workbench", version: 1, store: "session" };
+    const TOOLBAR_COLLAPSE_KEY = "pdfAnnotToolbarCollapsed";
+    let persistTimer = null;
+
+    function openSessionDb() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(SESSION_DB.name, SESSION_DB.version);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => resolve(req.result);
+        req.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(SESSION_DB.store)) {
+            db.createObjectStore(SESSION_DB.store);
+          }
+        };
+      });
+    }
+
+    function idbPutSession(record) {
+      return openSessionDb().then(
+        (db) => new Promise((resolve, reject) => {
+          const tx = db.transaction(SESSION_DB.store, "readwrite");
+          tx.objectStore(SESSION_DB.store).put(record, "session");
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        })
+      );
+    }
+
+    function idbGetSession() {
+      return openSessionDb().then(
+        (db) => new Promise((resolve, reject) => {
+          const tx = db.transaction(SESSION_DB.store, "readonly");
+          const req = tx.objectStore(SESSION_DB.store).get("session");
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        })
+      );
+    }
+
+    function schedulePersist() {
+      if (persistTimer) {
+        clearTimeout(persistTimer);
+      }
+      persistTimer = setTimeout(() => {
+        persistTimer = null;
+        void persistSessionNow({ silent: true });
+      }, 1800);
+    }
+
+    function collectSnapshot() {
+      return {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        pdfName: state.pdfName,
+        schemaTemplatePaths: state.schemaTemplatePaths,
+        schemaDefinition: state.schemaDefinition,
+        schemaTree: state.schemaTree,
+        schemaMeta: state.schemaMeta,
+        schemaFileText: state.schemaFileText,
+        schemaHelpText: state.schemaHelpText,
+        schemaHelpMeta: state.schemaHelpMeta,
+        annotations: state.annotations,
+        arrayLevelRegistry: state.arrayLevelRegistry,
+        currentPage: state.currentPage,
+        scale: state.scale,
+        ocrEndpoint: els.ocrEndpointInput.value.trim()
+      };
+    }
+
+    async function persistSessionNow(options = {}) {
+      const { silent = true } = options;
+      if (!state.pdfDoc || !state.pdfDataBuffer) {
+        if (!silent) {
+          window.alert("请先通过「PDF 原文」选择文件加载文档；保存会话需要保留原始 PDF 数据。");
+        }
+        return;
+      }
+      try {
+        const snapshot = collectSnapshot();
+        await idbPutSession({ snapshot, pdfBuffer: state.pdfDataBuffer });
+        if (!silent) {
+          setStatus(`会话已保存到本机浏览器（${new Date().toLocaleTimeString()}）。刷新页面后将自动恢复。`);
+        }
+      } catch (error) {
+        if (!silent) {
+          window.alert(`保存失败：${error.message || error}`);
+        } else {
+          console.warn("自动保存会话失败", error);
+        }
+      }
+    }
+
+    function applyToolbarCollapsed(collapsed) {
+      els.toolbar.classList.toggle("toolbar-collapsed", collapsed);
+      els.toolbarToggle.setAttribute("aria-expanded", String(!collapsed));
+      els.toolbarToggle.textContent = collapsed ? "展开工具区" : "收起工具区";
+      try {
+        localStorage.setItem(TOOLBAR_COLLAPSE_KEY, collapsed ? "1" : "0");
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
+    async function restoreSessionFromStorage() {
+      let row;
+      try {
+        row = await idbGetSession();
+      } catch (e) {
+        return;
+      }
+      if (!row || !row.snapshot || !row.pdfBuffer || row.snapshot.version !== 1) {
+        return;
+      }
+      const snap = row.snapshot;
+      try {
+        state.schemaTemplatePaths = snap.schemaTemplatePaths;
+        state.schemaDefinition = deepCloneJson(snap.schemaDefinition);
+        state.schemaTree = snap.schemaTree
+          ? deepCloneJson(snap.schemaTree)
+          : buildSchemaTree(snap.schemaTemplatePaths);
+        state.schemaMeta = { ...snap.schemaMeta };
+        state.schemaFileText = snap.schemaFileText ?? null;
+        state.schemaHelpText = snap.schemaHelpText || "";
+        state.schemaHelpMeta = snap.schemaHelpMeta
+          ? { ...snap.schemaHelpMeta }
+          : { name: "", source: "none" };
+        state.annotations = Array.isArray(snap.annotations) ? snap.annotations : [];
+        state.arrayLevelRegistry = snap.arrayLevelRegistry && typeof snap.arrayLevelRegistry === "object"
+          ? { ...snap.arrayLevelRegistry }
+          : {};
+        state.currentPage = Math.max(1, snap.currentPage || 1);
+        state.scale = typeof snap.scale === "number" ? snap.scale : 1.25;
+        if (snap.ocrEndpoint) {
+          els.ocrEndpointInput.value = snap.ocrEndpoint;
+        }
+
+        state.pdfDataBuffer = row.pdfBuffer;
+        const typedArray = new Uint8Array(state.pdfDataBuffer);
+        state.pdfDoc = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        state.pdfName = snap.pdfName || "";
+        state.totalPages = state.pdfDoc.numPages;
+        state.currentPage = Math.min(state.currentPage, state.totalPages);
+        state.textCache = new Map();
+        state.currentDraft = null;
+        state.editingId = null;
+        state.selectedSegments = [];
+        state.arrayIndices = {};
+        state.viewMode = "pdf";
+        setViewMode("pdf");
+
+        els.rawTextInput.value = "";
+        els.normalizedValueInput.value = "";
+        els.noteInput.value = "";
+        els.confidenceInput.value = "0.9";
+        els.saveButton.textContent = "保存标注";
+
+        updateSchemaInfo();
+        updateSchemaHelpInfo();
+        resetValidationOutput();
+        await renderPage(state.currentPage);
+        renderLabelLevels();
+        refreshAnnotationList();
+        updateJsonPreview();
+        setDocumentInfo(state.pdfName ? `已加载 ${state.pdfName}` : "已恢复 PDF");
+        setStatus("已从本机自动恢复上次保存的会话，可继续标注。");
+      } catch (error) {
+        console.warn("恢复会话失败", error);
+      }
     }
 
     function stripJsonComments(text) {
@@ -1577,24 +1852,38 @@
       updateSchemaHelpInfo();
     }
 
-    function replaceSchemaPaths(paths, schemaMeta, schemaDefinition = null) {
-      const normalizedPaths = Array.from(new Set(paths.map(normalizeSchemaTemplatePathRaw).filter(Boolean)));
+    function applySchemaContent(normalizedPaths, schemaMeta, schemaDefinition = null, options = {}) {
+      const { clearAnnotations = true } = options;
       if (!normalizedPaths.length) {
         throw new Error("未从该 Schema 中解析出可标注字段");
       }
 
-      state.annotations = [];
       state.schemaTemplatePaths = normalizedPaths;
       state.schemaDefinition = deepCloneJson(schemaDefinition || buildTemplateDefinitionFromPaths(normalizedPaths));
       state.schemaTree = buildSchemaTree(normalizedPaths);
       state.schemaMeta = { ...schemaMeta };
-      state.selectedSegments = [];
-      state.arrayIndices = {};
-      state.arrayLevelRegistry = {};
-      clearForm({ keepDraft: false, keepCategories: false, keepArrayIndex: false });
+
+      if (clearAnnotations) {
+        state.annotations = [];
+        state.arrayLevelRegistry = {};
+        state.selectedSegments = [];
+        state.arrayIndices = {};
+        clearForm({ keepDraft: false, keepCategories: false, keepArrayIndex: false });
+        resetValidationOutput();
+        setStatus(`当前已切换到 ${state.schemaMeta.name}，请重新选择字段后继续标注。`);
+      } else {
+        state.selectedSegments = [];
+        state.arrayIndices = {};
+        renderLabelLevels();
+        resetValidationOutput();
+      }
+
       updateSchemaInfo();
-      resetValidationOutput();
-      setStatus(`当前已切换到 ${state.schemaMeta.name}，请重新选择字段后继续标注。`);
+    }
+
+    function replaceSchemaPaths(paths, schemaMeta, schemaDefinition = null) {
+      const normalizedPaths = Array.from(new Set(paths.map(normalizeSchemaTemplatePathRaw).filter(Boolean)));
+      applySchemaContent(normalizedPaths, schemaMeta, schemaDefinition, { clearAnnotations: true });
     }
 
     function confirmSchemaReplacement() {
@@ -1614,6 +1903,7 @@
       }
 
       const text = await file.text();
+      state.schemaFileText = text;
       const parsed = parseJsonLikeSchema(text);
       const extractedPaths = extractPathsFromSchemaDefinition(parsed);
       replaceSchemaPaths(extractedPaths, {
@@ -1621,6 +1911,7 @@
         source: "upload"
       }, parsed);
       els.schemaFileInput.value = "";
+      schedulePersist();
     }
 
     async function loadSchemaHelpFromFile(file) {
@@ -1633,6 +1924,7 @@
         source: "upload"
       });
       els.schemaHelpFileInput.value = "";
+      schedulePersist();
     }
 
     function resetSchemaToDefault() {
@@ -1642,7 +1934,9 @@
       if (!confirmSchemaReplacement()) {
         return;
       }
+      state.schemaFileText = null;
       replaceSchemaPaths(defaultSchemaPaths, defaultSchemaMeta);
+      schedulePersist();
     }
 
     function tokenizeSchemaPath(path) {
@@ -1827,6 +2121,7 @@
       state.selectedSegments = state.selectedSegments.slice(0, level);
       state.selectedSegments[level] = fieldName;
       renderLabelLevels();
+      schedulePersist();
     }
 
     function getSelectedTemplatePath() {
@@ -1967,6 +2262,8 @@
 
     function setDocumentInfo(text) {
       renderStatusChip(els.documentInfo, "当前文档", text);
+      const stripText = text.replace(/^已加载\s+/, "") || "未加载";
+      renderStatusChip(els.documentInfoStrip, "文档", stripText);
     }
 
     function setViewMode(mode) {
@@ -2012,7 +2309,7 @@
         transform: outputScale === 1 ? null : [outputScale, 0, 0, outputScale, 0, 0]
       }).promise;
       drawAnnotationsForPage(pageNumber);
-      renderStatusChip(els.pageInfo, "页码", `第 ${pageNumber} 页 / 共 ${state.totalPages} 页`);
+      setPageInfoChips(pageNumber);
     }
 
     function getColorForLabel(label) {
@@ -2237,19 +2534,23 @@
         setStatus(text ? "OCR 识别完成，结果已回填。" : "OCR 已执行，但没有识别到文本。");
         return text;
       } catch (error) {
+        const msg = error && error.message ? String(error.message) : String(error);
         if (!silent) {
-          alert(`OCR 调用失败：${error.message}`);
+          alert(`OCR 调用失败：${msg}`);
         }
-        setStatus("OCR 调用失败，请检查本地 OCR 服务是否已启动。");
+        const hint = /Failed to fetch|NetworkError|load failed/i.test(msg)
+          ? "无法连接 OCR 服务（请确认已启动后端，且地址与「OCR 服务地址」一致，例如 http://127.0.0.1:8765/ocr）"
+          : msg;
+        setStatus(`OCR 调用失败：${hint}`);
         return "";
       }
     }
 
     async function populateDraftTextFromSelection() {
-      els.rawTextInput.value = "";
       if (!els.normalizedValueInput.value.trim()) {
         els.normalizedValueInput.value = "";
       }
+      await extractTextFromCurrentDraft();
       return runLocalOCR({ silent: true, preserveNormalized: true });
     }
 
@@ -2483,6 +2784,7 @@
         refreshAnnotationList();
         updateJsonPreview();
         setStatus("标注已保存，可继续框选下一项。");
+        schedulePersist();
       } catch (error) {
         alert(error.message);
       }
@@ -2557,6 +2859,7 @@
       drawAnnotationsForPage(state.currentPage);
       refreshAnnotationList();
       updateJsonPreview();
+      schedulePersist();
     }
 
     function refreshAnnotationList() {
@@ -2826,6 +3129,7 @@
       reader.onload = async function onLoad() {
         try {
           const typedArray = new Uint8Array(this.result);
+          state.pdfDataBuffer = typedArray.slice().buffer;
           state.pdfDoc = await pdfjsLib.getDocument({ data: typedArray }).promise;
           state.pdfName = file.name;
           state.currentPage = 1;
@@ -2841,6 +3145,7 @@
           setDocumentInfo(`已加载 ${file.name}`);
           setStatus("先在左侧 PDF 上框选一个区域。");
           updateJsonPreview();
+          schedulePersist();
         } catch (error) {
           alert(`加载 PDF 失败: ${error.message}`);
         }
@@ -2854,6 +3159,7 @@
       }
       state.currentPage -= 1;
       await renderPage(state.currentPage);
+      schedulePersist();
     });
 
     document.getElementById("next-page").addEventListener("click", async () => {
@@ -2862,6 +3168,7 @@
       }
       state.currentPage += 1;
       await renderPage(state.currentPage);
+      schedulePersist();
     });
 
     document.getElementById("zoom-in").addEventListener("click", async () => {
@@ -2871,6 +3178,7 @@
       state.scale = Math.min(state.scale + 0.2, 3);
       state.textCache.delete(state.currentPage);
       await renderPage(state.currentPage);
+      schedulePersist();
     });
 
     els.toggleViewButton.addEventListener("click", () => {
@@ -2888,6 +3196,7 @@
       state.scale = Math.max(state.scale - 0.2, 0.6);
       state.textCache.delete(state.currentPage);
       await renderPage(state.currentPage);
+      schedulePersist();
     });
 
     document.getElementById("refresh-text").addEventListener("click", () => {
@@ -2943,14 +3252,34 @@
       setViewMode(nextMode);
     });
 
-    state.schemaTree = buildSchemaTree(state.schemaTemplatePaths);
-    setViewMode("pdf");
-    updateSchemaInfo();
-    updateSchemaHelpInfo();
-    updateJsonPreview();
-    renderLabelLevels();
-    setupDrawing();
-    refreshAnnotationList();
+    (async function boot() {
+      state.schemaTree = buildSchemaTree(state.schemaTemplatePaths);
+      setViewMode("pdf");
+      updateSchemaInfo();
+      updateSchemaHelpInfo();
+      updateJsonPreview();
+      renderLabelLevels();
+      setupDrawing();
+      refreshAnnotationList();
+
+      try {
+        applyToolbarCollapsed(localStorage.getItem(TOOLBAR_COLLAPSE_KEY) === "1");
+      } catch (e) {
+        applyToolbarCollapsed(false);
+      }
+      els.toolbarToggle.addEventListener("click", () => {
+        applyToolbarCollapsed(!els.toolbar.classList.contains("toolbar-collapsed"));
+      });
+      els.saveSessionButton.addEventListener("click", () => {
+        void persistSessionNow({ silent: false });
+      });
+      els.ocrEndpointInput.addEventListener("change", schedulePersist);
+
+      await restoreSessionFromStorage();
+      if (!state.pdfDoc) {
+        setDocumentInfo("未加载 PDF");
+      }
+    })();
   </script>
 </body>
 </html>
